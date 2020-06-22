@@ -53,6 +53,7 @@ LinkSmith (written by Jim Hoste and Morwen Thistlethwaite).
 class PLinkBase(LinkViewer):
     """
     Base class for windows displaying a LinkViewer and an Info Window.
+    FLAGET
     """
     def __init__(self, root=None, manifold=None, file_name=None, title='',
                  show_crossing_labels=False):
@@ -130,6 +131,7 @@ class PLinkBase(LinkViewer):
     def _key_press(self, event):
         """
         Handler for keypress events.
+        FLAGET
         """
         dx, dy = 0, 0
         key = event.keysym
@@ -576,6 +578,7 @@ class LinkEditor(PLinkBase):
         PLinkBase.__init__(self, *args, **kwargs)
         self.flipcheck = None
         self.shift_down = False
+        self.vertex_mode = False
         self.state='start_state'
         self.canvas.bind('<Button-1>', self.single_click)
         self.canvas.bind('<Double-Button-1>', self.double_click)
@@ -646,6 +649,13 @@ class LinkEditor(PLinkBase):
         if key in ('Shift_L', 'Shift_R') and self.state == 'start_state':
             self.shift_down = True
             self.set_start_cursor(self.cursorx, self.cursory)
+        if key.lower() == 'v':
+            if self.vertex_mode:
+                self.vertex_mode = False
+                print("No longer in vertex mode")
+            else:
+                self.vertex_mode = True
+                print("In vertex mode")
         if key in ('Delete','BackSpace'):
             if self.state == 'drawing_state':
                 last_arrow = self.ActiveVertex.in_arrow
@@ -864,6 +874,36 @@ class LinkEditor(PLinkBase):
                 self.update_smooth()
                 return
             elif self.clicked_on_arrow(start_vertex):
+                print("clicked on an arrow")
+                if self.vertex_mode:
+                    selected_arrow = None
+                    for arrow in self.Arrows:
+                        if arrow.too_close(start_vertex):
+                            selected_arrow = arrow
+                            this_color = arrow.color
+                            start = arrow.start
+                            end = arrow.end
+                    self.Arrows.remove(selected_arrow)
+                    selected_arrow.end.erase()
+                    selected_arrow.erase()
+
+                    arrow1 = Arrow(start, start_vertex, self.canvas,
+                                                            color = this_color)
+                    arrow2 = Arrow(start_vertex, end, self.canvas,
+                                                            color = this_color)
+                    self.Arrows.append(arrow1)
+                    self.Arrows.append(arrow2)
+                    self.Vertices.append(start_vertex)
+                    start_vertex.expose()
+                    arrow1.expose()
+                    arrow2.expose()
+                    self.update_info()
+                else:
+                    for arrow in self.Arrows:
+                        if arrow.too_close(start_vertex):
+                            arrow.end.reverse_path(self.Crossings)
+                            self.update_info()
+                            break
                 #print 'clicked on an arrow.'
                 return
             else:
@@ -1133,8 +1173,6 @@ class LinkEditor(PLinkBase):
     def clicked_on_arrow(self, vertex):
         for arrow in self.Arrows:
             if arrow.too_close(vertex):
-                arrow.end.reverse_path(self.Crossings)
-                self.update_info()
                 return True
         return False
 
