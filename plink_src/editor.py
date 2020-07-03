@@ -153,6 +153,7 @@ class PLinkBase(LinkViewer):
         self._add_info_menu()
         self._add_tools_menu()
         self._add_style_menu()
+        self._add_reid_menu()
         self.window.config(menu=menubar)
         help_menu = Tk_.Menu(menubar, tearoff=0)
         help_menu.add_command(label='About PLink...', command=self.about)
@@ -579,6 +580,8 @@ class LinkEditor(PLinkBase):
         self.flipcheck = None
         self.shift_down = False
         self.vertex_mode = False
+        self.r1_mode = False
+        self.r2_mode = False
         self.state='start_state'
         self.canvas.bind('<Button-1>', self.single_click)
         self.canvas.bind('<Double-Button-1>', self.double_click)
@@ -630,6 +633,42 @@ class LinkEditor(PLinkBase):
             tools_menu.add_command(label=self.cb_menu, command=self._do_callback)
         self.menubar.add_cascade(label='Tools', menu=tools_menu)
 
+    def _add_reid_menu(self):
+        # self.lock_var = Tk_.BooleanVar(self.window)
+        # self.lock_var.set(False)
+        self.reid_menu = reid_menu = Tk_.Menu(self.menubar, tearoff=0)
+        reid_menu.add_command(label='Reidemeister 1',
+                       command=self.reid_one)
+        reid_menu.add_command(label='Reidemeister 2',
+                       command=self.reid_two)
+        # # tools_menu.add_checkbutton(label="Preserve diagram", var=self.lock_var)
+        # tools_menu.add_command(label='Clear', command=self.clear)
+        # if self.callback:
+        #     tools_menu.add_command(label=self.cb_menu, command=self._do_callback)
+        self.menubar.add_cascade(label='Reidemeister', menu=reid_menu)
+
+    # def _add_reidemeister_menu(self):
+    #     self.reid_menu = reid_menu = Tk_.Menu(self.menubar, tearoff=0)
+    #     reid_menu.add_command(label='Reidemeister 1', command=self.reid_one)
+    #     reid_menu.add_command(label='Reidemeister 2', command=self.reid_two)
+    #     self.menubar.add_cascade(label='Tools', menu=tools_menu)
+
+    def reid_one(self):
+        if self.r1_mode:
+            self.r1_mode = False
+            print("No longer in r1 mode")
+        else:
+            self.r1_mode = True
+            print("In r1 mode")
+
+    def reid_two(self):
+        if self.r2_mode:
+            self.r2_mode = False
+            print("No longer in r2 mode")
+        else:
+            self.r2_mode = True
+            print("In r2 mode")
+
     def _key_release(self, event):
         """
         Handler for keyrelease events.
@@ -656,6 +695,11 @@ class LinkEditor(PLinkBase):
             else:
                 self.vertex_mode = True
                 print("In vertex mode")
+        if key.lower() == 'p':
+            print("Vertices", self.Vertices)
+            print("Arrows", self.Arrows)
+            print("Crossings", self.Crossings)
+            print("Active Vertex", self.ActiveVertex)
         if key in ('Delete','BackSpace'):
             if self.state == 'drawing_state':
                 last_arrow = self.ActiveVertex.in_arrow
@@ -862,20 +906,27 @@ class LinkEditor(PLinkBase):
             elif self.lock_var.get():
                 return
             elif start_vertex in self.CrossPoints:
-                #print 'single click on a crossing'
-                crossing = self.Crossings[self.CrossPoints.index(start_vertex)]
-                if crossing.is_virtual:
-                    crossing.is_virtual = False
+                print('single click on a crossing')
+                if self.r1_mode == True:
+                    crossing = self.Crossings[self.CrossPoints.index(start_vertex)]
+                    print(self.Crossings)
+                    print(self.Vertices)
+                    print(self.Arrows)
                 else:
-                    crossing.reverse()
-                self.update_info()
-                crossing.under.draw(self.Crossings)
-                crossing.over.draw(self.Crossings)
-                self.update_smooth()
-                return
+                    crossing = self.Crossings[self.CrossPoints.index(start_vertex)]
+                    if crossing.is_virtual:
+                        crossing.is_virtual = False
+                    else:
+                        crossing.reverse()
+                    self.update_info()
+                    crossing.under.draw(self.Crossings)
+                    crossing.over.draw(self.Crossings)
+                    self.update_smooth()
+                    return
             elif self.clicked_on_arrow(start_vertex):
                 print("clicked on an arrow")
                 if self.vertex_mode:
+                    new_vert = start_vertex
                     selected_arrow = None
                     for arrow in self.Arrows:
                         if arrow.too_close(start_vertex):
@@ -883,17 +934,16 @@ class LinkEditor(PLinkBase):
                             this_color = arrow.color
                             start = arrow.start
                             end = arrow.end
-                    self.Arrows.remove(selected_arrow)
-                    selected_arrow.end.erase()
-                    selected_arrow.erase()
-
-                    arrow1 = Arrow(start, start_vertex, self.canvas,
-                                                            color = this_color)
-                    arrow2 = Arrow(start_vertex, end, self.canvas,
-                                                            color = this_color)
+                    self.destroy_arrow(selected_arrow)
+                    new_vert.set_color(this_color)
+                    arrow1 = Arrow(start, new_vert, self.canvas,
+                                            style='hidden', color = this_color)
+                    arrow2 = Arrow(new_vert, end, self.canvas,
+                                            style='hidden', color = this_color)
+                    new_vert.set_color(arrow2.color)
+                    self.Vertices.append(new_vert)
                     self.Arrows.append(arrow1)
                     self.Arrows.append(arrow2)
-                    self.Vertices.append(start_vertex)
                     start_vertex.expose()
                     arrow1.expose()
                     arrow2.expose()
@@ -1234,6 +1284,26 @@ class LinkEditor(PLinkBase):
                 endpoint = other_ends[other_ends.index(self.ActiveVertex)]
                 self.ActiveVertex.swallow(endpoint, self.palette)
                 self.Vertices = [v for v in self.Vertices if v is not endpoint]
+            vertex_separation_len = Arrow.epsilon + 12
+            dotted_line_crossings = []
+            for arrow in self.Arrows:
+                new_crossing = Crossing(self.LiveArrow3, arrow)
+                new_crossing.locate()
+                if new_crossing.x != None:
+                    dotted_line_crossings.append((math.dist(new_crossing,
+                    self.ActiveVertex.in_arrow.end.point()), arrow))
+            dotted_line_crossings.sort()
+            # calculations
+            hypot = math.hypot()
+
+            # for edge in dotted_line_crossings:
+            #     hypot = math.hypot(edge[0].x, edge[0].y)
+            #     theta = math.atan(edge[0].x / edge[0].y)
+            #     new_x = hypot * math.cos(theta)
+            #     new_y = hypot * math.sin(theta)
+            #     # eric code here
+            #
+            #     destroy_arrow(edge[1])
             self.update_crossings(self.ActiveVertex.in_arrow)
             self.update_crossings(self.ActiveVertex.out_arrow)
         if endpoint is None and not self.generic_vertex(self.ActiveVertex):
