@@ -634,24 +634,12 @@ class LinkEditor(PLinkBase):
         self.menubar.add_cascade(label='Tools', menu=tools_menu)
 
     def _add_reid_menu(self):
-        # self.lock_var = Tk_.BooleanVar(self.window)
-        # self.lock_var.set(False)
         self.reid_menu = reid_menu = Tk_.Menu(self.menubar, tearoff=0)
         reid_menu.add_command(label='Reidemeister 1',
                        command=self.reid_one)
         reid_menu.add_command(label='Reidemeister 2',
                        command=self.reid_two)
-        # # tools_menu.add_checkbutton(label="Preserve diagram", var=self.lock_var)
-        # tools_menu.add_command(label='Clear', command=self.clear)
-        # if self.callback:
-        #     tools_menu.add_command(label=self.cb_menu, command=self._do_callback)
         self.menubar.add_cascade(label='Reidemeister', menu=reid_menu)
-
-    # def _add_reidemeister_menu(self):
-    #     self.reid_menu = reid_menu = Tk_.Menu(self.menubar, tearoff=0)
-    #     reid_menu.add_command(label='Reidemeister 1', command=self.reid_one)
-    #     reid_menu.add_command(label='Reidemeister 2', command=self.reid_two)
-    #     self.menubar.add_cascade(label='Tools', menu=tools_menu)
 
     def reid_one(self):
         if self.r1_mode:
