@@ -46,6 +46,7 @@ class LinkManager:
         self.CrossPoints = []
         self.LiveArrow1 = None
         self.LiveArrow2 = None
+        self.LiveArrow3 = None
         self.ActiveVertex = None
         self.DTlabels = []
         self.labels = []
