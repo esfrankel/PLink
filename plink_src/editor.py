@@ -17,7 +17,7 @@
 This module exports the class LinkEditor which is a full-featured
 editing tool for link diagrams.
 """
-import os, time, webbrowser
+import os, time, webbrowser, math
 
 from .gui import *
 from . import smooth
@@ -353,7 +353,7 @@ class PLinkBase(LinkViewer):
             vertex.x += dx
             vertex.y += dy
         self.canvas.move('transformable', dx, dy)
-        for livearrow in (self.LiveArrow1, self.LiveArrow2):
+        for livearrow in (self.LiveArrow1, self.LiveArrow2, self.LiveArrow3):
             if livearrow:
                 x0,y0,x1,y1 = self.canvas.coords(livearrow)
                 x0 += dx
@@ -374,7 +374,7 @@ class PLinkBase(LinkViewer):
         for vertex in self.Vertices:
             vertex.draw(skip_frozen=False)
         self.update_smooth()
-        for livearrow in (self.LiveArrow1, self.LiveArrow2):
+        for livearrow in (self.LiveArrow1, self.LiveArrow2, self.LiveArrow3):
             if livearrow:
                 x0,y0,x1,y1 = self.canvas.coords(livearrow)
                 x0 = ulx + xfactor*(x0 - ulx)
@@ -888,6 +888,9 @@ class LinkEditor(PLinkBase):
                     x0, y0 = self.ActiveVertex.out_arrow.end.point()
                     self.ActiveVertex.out_arrow.freeze()
                     self.LiveArrow2 = self.canvas.create_line(x0, y0, x1, y1, fill='red')
+                if self.ActiveVertex.in_arrow and self.ActiveVertex.out_arrow:
+                    x0, y0 = self.ActiveVertex.out_arrow.start.point()
+                    self.LiveArrow3 = self.canvas.create_line(x0, y0, x1, y1, fill='red', dash=(4, 4))
                 if self.lock_var.get():
                     self.attach_cursor('start')
                 return
@@ -1174,6 +1177,9 @@ class LinkEditor(PLinkBase):
         if self.LiveArrow2:
             x0,y0,x1,y1 = self.canvas.coords(self.LiveArrow2)
             self.canvas.coords(self.LiveArrow2, x0, y0, x, y)
+        if self.LiveArrow3:
+            x0,y0,x1,y1 = self.canvas.coords(self.LiveArrow3)
+            self.canvas.coords(self.LiveArrow3, x0, y0, x, y)
         self.update_smooth()
         self.update_info()
         self.window.update_idletasks()
@@ -1228,6 +1234,8 @@ class LinkEditor(PLinkBase):
         self.LiveArrow1 = None
         self.canvas.delete(self.LiveArrow2)
         self.LiveArrow2 = None
+        self.canvas.delete(self.LiveArrow3)
+        self.LiveArrow3 = None
         self.ActiveVertex = None
         self.update_crosspoints()
         self.state = 'start_state'
@@ -1264,6 +1272,52 @@ class LinkEditor(PLinkBase):
         else:
             x, y = float(self.cursorx), float(self.cursory)
             self.ActiveVertex.x, self.ActiveVertex.y = x, y
+        # start code
+        in_arr = self.ActiveVertex.in_arrow
+        out_arr = self.ActiveVertex.out_arrow
+        vertex_separation_len = Arrow.epsilon + 12
+        x_0, y_0, x_1, y_1 = self.canvas.coords(self.LiveArrow3)
+        self.canvas.coords(self.LiveArrow3, x_0, y_0, x_1, y_1)
+        dotted_start_vertex = Vertex(x_0, y_0, self.canvas, style='hidden')
+        dotted_arrow = Arrow(dotted_start_vertex, self.ActiveVertex, self.canvas, color='red')
+        self.Vertices.append(dotted_start_vertex)
+        self.Arrows.append(dotted_arrow)
+        dotted_line_crossings = self.crossed_arrows(dotted_arrow, [dotted_arrow])
+        # calculations
+        count = 1
+        hypot = math.dist([x_0, y_0], [x_1, y_1])
+        sign_x = 1 if x_1 - x_0 >= 0 else -1
+        sign_y = 1 if y_1 - y_0 >= 0 else -1
+        theta = math.atan(abs((y_1 - y_0) / (x_1 - x_0)))
+        for n in dotted_line_crossings:
+            new_x = x_0 + (hypot + (count * vertex_separation_len)) * sign_x * math.cos(theta)
+            new_y = y_0 + (hypot + (count * vertex_separation_len)) * sign_y * math.sin(theta)
+            edge = self.Arrows[n + count - 1]
+            new_v = Vertex(new_x, new_y, self.canvas, style='hidden')
+            new_v.set_color(edge.color)
+            arrow1 = Arrow(edge.start, new_v, self.canvas, color = edge.color)
+            arrow2 = Arrow(new_v, edge.end, self.canvas, color = edge.color)
+            self.Vertices.append(new_v)
+            new_v.expose()
+            self.Arrows.insert(n + count - 1, arrow1)
+            self.update_crossings(arrow1)
+            self.update_crosspoints()
+            arrow1.expose()
+            self.Arrows.insert(n + count, arrow2)
+            self.update_crossings(arrow2)
+            self.update_crosspoints()
+            arrow2.expose()
+            count += 1
+            self.destroy_arrow(edge)
+            arrow1.start.out_arrow = arrow1
+            arrow2.end.in_arrow = arrow2
+        self.Vertices.remove(dotted_start_vertex)
+        self.destroy_arrow(dotted_arrow)
+        self.ActiveVertex.in_arrow = in_arr
+        self.ActiveVertex.out_arrow = out_arr
+        self.ActiveVertex.update_arrows()
+        self.update_info()
+        # end code
         endpoint = None
         if self.ActiveVertex.is_endpoint():
             other_ends = [v for v in self.Vertices if
