@@ -1293,6 +1293,8 @@ class LinkEditor(PLinkBase):
             for n in dotted_line_crossings:
                 new_x = x_0 + (hypot + (count * vertex_separation_len)) * sign_x * math.cos(theta)
                 new_y = y_0 + (hypot + (count * vertex_separation_len)) * sign_y * math.sin(theta)
+                if new_x >= self.canvas.winfo_width() or new_x <= 0 or new_y >= self.canvas.winfo_height() or new_y <= 0:
+                    raise ValueError
                 edge = self.Arrows[n + count - 1]
                 new_v = Vertex(new_x, new_y, self.canvas, style='hidden')
                 new_v.set_color(edge.color)
@@ -1327,26 +1329,6 @@ class LinkEditor(PLinkBase):
                 endpoint = other_ends[other_ends.index(self.ActiveVertex)]
                 self.ActiveVertex.swallow(endpoint, self.palette)
                 self.Vertices = [v for v in self.Vertices if v is not endpoint]
-            vertex_separation_len = Arrow.epsilon + 12
-            dotted_line_crossings = []
-            for arrow in self.Arrows:
-                new_crossing = Crossing(self.LiveArrow3, arrow)
-                new_crossing.locate()
-                if new_crossing.x != None:
-                    dotted_line_crossings.append((math.dist(new_crossing,
-                    self.ActiveVertex.in_arrow.end.point()), arrow))
-            dotted_line_crossings.sort()
-            # calculations
-            hypot = math.hypot()
-
-            # for edge in dotted_line_crossings:
-            #     hypot = math.hypot(edge[0].x, edge[0].y)
-            #     theta = math.atan(edge[0].x / edge[0].y)
-            #     new_x = hypot * math.cos(theta)
-            #     new_y = hypot * math.sin(theta)
-            #     # eric code here
-            #
-            #     destroy_arrow(edge[1])
             self.update_crossings(self.ActiveVertex.in_arrow)
             self.update_crossings(self.ActiveVertex.out_arrow)
         if endpoint is None and not self.generic_vertex(self.ActiveVertex):
