@@ -919,12 +919,32 @@ class LinkEditor(PLinkBase):
             elif self.lock_var.get():
                 return
             elif start_vertex in self.CrossPoints:
-                print('single click on a crossing')
+                # print('single click on a crossing')
                 if self.r1_mode == True:
                     crossing = self.Crossings[self.CrossPoints.index(start_vertex)]
-                    print(self.Crossings)
-                    print(self.Vertices)
-                    print(self.Arrows)
+                    arrow_path = [crossing.over]
+                    while crossing.under not in arrow_path:
+                        most_recent = arrow_path[-1]
+                        arrow_path.append(most_recent.end.out_arrow)
+                    default_orientation = None
+                    r1_correctable = True
+                    for crossing in self.Crossings:
+                        if crossing.under in arrow_path:
+                            if default_orientation is None:
+                                default_orientation = "under"
+                            else:
+                                if default_orientation is not "under":
+                                    r1_correctable = False
+                        elif crossing.over in arrow_path:
+                            if default_orientation is None:
+                                default_orientation = "over"
+                            else:
+                                if default_orientation is not "over":
+                                    r1_correctable = False
+                        else:
+                            pass
+                        print("Can be R1 simplified: ", r1_correctable)
+                    return
                 else:
                     crossing = self.Crossings[self.CrossPoints.index(start_vertex)]
                     if crossing.is_virtual:
