@@ -580,6 +580,9 @@ class LinkEditor(PLinkBase):
         self.flipcheck = None
         self.shift_down = False
         self.vertex_mode = False
+        self.vertex_mode_arr = []
+        self.under_mode = False
+        self.under_mode_arr = []
         self.r1_mode = False
         self.r2_mode = False
         self.state='start_state'
@@ -679,10 +682,29 @@ class LinkEditor(PLinkBase):
         if key.lower() == 'v':
             if self.vertex_mode:
                 self.vertex_mode = False
+                self.canvas.delete(self.vertex_mode_arr[len(self.vertex_mode_arr) - 1])
                 print("No longer in vertex mode")
             else:
                 self.vertex_mode = True
+                self.vertex_mode_arr.append(self.canvas.create_text(self.canvas.winfo_width() - 80, 5,
+                                            text="vertex mode",
+                                            fill="blue",
+                                            anchor=Tk_.NW,
+                                            font='Helvetica 16 bold'))
                 print("In vertex mode")
+        if key.lower() == 'u':
+            if self.under_mode:
+                self.under_mode = False
+                self.canvas.delete(self.under_mode_arr[len(self.under_mode_arr) - 1])
+                print("No longer in under mode")
+            else:
+                self.under_mode = True
+                self.under_mode_arr.append(self.canvas.create_text(self.canvas.winfo_width() - 160, 5,
+                                            text="under mode",
+                                            fill="red",
+                                            anchor=Tk_.NW,
+                                            font='Helvetica 16 bold'))
+                print("In under mode")
         if key.lower() == 'p':
             print("Vertices", self.Vertices)
             print("Arrows", self.Arrows)
@@ -1398,7 +1420,10 @@ class LinkEditor(PLinkBase):
         for arrow in self.Arrows:
             if this_arrow == arrow:
                 continue
-            new_crossing = Crossing(this_arrow, arrow)
+            if self.under_mode == False:
+                new_crossing = Crossing(this_arrow, arrow)
+            else:
+                new_crossing = Crossing(arrow, this_arrow)
             new_crossing.locate()
             if new_crossing.x != None:
                 if new_crossing in cross_list:
