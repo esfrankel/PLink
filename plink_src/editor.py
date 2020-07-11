@@ -699,7 +699,7 @@ class LinkEditor(PLinkBase):
                 print("No longer in under mode")
             else:
                 self.under_mode = True
-                self.under_mode_arr.append(self.canvas.create_text(self.canvas.winfo_width() - 160, 5,
+                self.under_mode_arr.append(self.canvas.create_text(self.canvas.winfo_width() - 80, 15,
                                             text="under mode",
                                             fill="red",
                                             anchor=Tk_.NW,
