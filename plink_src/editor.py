@@ -987,7 +987,67 @@ class LinkEditor(PLinkBase):
                     under_arrow_path = self.get_under_arrow_path(crossing)
 
                     can_reduce_over, can_reduce_under = self.over_under_has_crossings(over_arrow_path, under_arrow_path, crossing)
-                    print(can_reduce_over, can_reduce_under)
+
+                    if can_reduce_under:
+                        original_under_start = crossing.under.start
+                        original_over_end = crossing.over.end
+                        color = crossing.over.color
+
+                        for ind in range(len(under_arrow_path)):
+                            arrow = under_arrow_path[ind]
+                            if ind != (len(under_arrow_path) - 1):
+                                self.Vertices.remove(arrow.end)
+                                arrow.end.erase()
+                            self.destroy_arrow(arrow)
+
+                        new_vert = start_vertex
+                        new_vert.set_color(color)
+                        self.Vertices.append(new_vert)
+
+                        arrow1 = Arrow(original_under_start, new_vert, self.canvas,
+                                                style='hidden', color = color)
+                        arrow2 = Arrow(new_vert, original_over_end, self.canvas,
+                                                style='hidden', color = color)
+                        self.Arrows.append(arrow1)
+                        self.Arrows.append(arrow2)
+
+                        new_vert.expose()
+                        arrow1.expose()
+                        arrow2.expose()
+
+                        self.update_info()
+                    elif can_reduce_over:
+                        original_under_start = crossing.over.start
+                        original_over_end = crossing.under.end
+                        color = crossing.over.color
+
+                        for ind in range(len(over_arrow_path)):
+                            arrow = over_arrow_path[ind]
+                            if ind != (len(over_arrow_path) - 1):
+                                self.Vertices.remove(arrow.end)
+                                arrow.end.erase()
+                            self.destroy_arrow(arrow)
+
+                        new_vert = start_vertex
+                        new_vert.set_color(color)
+                        self.Vertices.append(new_vert)
+
+                        arrow1 = Arrow(original_under_start, new_vert, self.canvas,
+                                                style='hidden', color = color)
+                        arrow2 = Arrow(new_vert, original_over_end, self.canvas,
+                                                style='hidden', color = color)
+                        self.Arrows.append(arrow1)
+                        self.Arrows.append(arrow2)
+
+                        new_vert.expose()
+                        arrow1.expose()
+                        arrow2.expose()
+
+                        self.update_info()
+                    else:
+                        tkMessageBox.showwarning(
+                            'Not implemented',
+                            'Sorry! R1 mode does not work in this setting.')
                     return
                 elif self.r2_mode == True:
                     start_vertex.expose()
