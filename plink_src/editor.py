@@ -869,6 +869,39 @@ class LinkEditor(PLinkBase):
             crossing.over.draw(self.Crossings)
             self.update_smooth()
 
+    def get_over_arrow_path(self, crossing):
+        arrow_path = [crossing.over]
+        while crossing.under not in arrow_path:
+            most_recent = arrow_path[-1]
+            arrow_path.append(most_recent.end.out_arrow)
+        return arrow_path
+
+    def get_under_arrow_path(self, crossing):
+        arrow_path = [crossing.under]
+        while crossing.over not in arrow_path:
+            most_recent = arrow_path[-1]
+            arrow_path.append(most_recent.end.out_arrow)
+        return arrow_path
+
+    def over_under_has_crossings(self, over_arrow_path, under_arrow_path, clicked_cross):
+        no_crossings_over = True
+        no_crossings_under = True
+        cross_list_copy = self.Crossings.copy()
+        cross_list_copy.remove(clicked_cross)
+
+        for crossing in cross_list_copy:
+            if crossing.under in over_arrow_path:
+                no_crossings_over = False
+            elif crossing.over in over_arrow_path:
+                no_crossings_over = False
+            elif crossing.under in under_arrow_path:
+                no_crossings_under = False
+            elif crossing.over in under_arrow_path:
+                no_crossings_under = False
+            else:
+                pass
+        return (no_crossings_over, no_crossings_under)
+
     def single_click(self, event):
         """
         Event handler for mouse clicks.
@@ -922,28 +955,11 @@ class LinkEditor(PLinkBase):
                 # print('single click on a crossing')
                 if self.r1_mode == True:
                     crossing = self.Crossings[self.CrossPoints.index(start_vertex)]
-                    arrow_path = [crossing.over]
-                    while crossing.under not in arrow_path:
-                        most_recent = arrow_path[-1]
-                        arrow_path.append(most_recent.end.out_arrow)
-                    default_orientation = None
-                    r1_correctable = True
-                    for crossing in self.Crossings:
-                        if crossing.under in arrow_path:
-                            if default_orientation is None:
-                                default_orientation = "under"
-                            else:
-                                if default_orientation is not "under":
-                                    r1_correctable = False
-                        elif crossing.over in arrow_path:
-                            if default_orientation is None:
-                                default_orientation = "over"
-                            else:
-                                if default_orientation is not "over":
-                                    r1_correctable = False
-                        else:
-                            pass
-                        print("Can be R1 simplified: ", r1_correctable)
+                    over_arrow_path = self.get_over_arrow_path(crossing)
+                    under_arrow_path = self.get_under_arrow_path(crossing)
+
+                    can_reduce_over, can_reduce_under = self.over_under_has_crossings(over_arrow_path, under_arrow_path, crossing)
+                    print(can_reduce_over, can_reduce_under)
                     return
                 else:
                     crossing = self.Crossings[self.CrossPoints.index(start_vertex)]
