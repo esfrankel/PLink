@@ -870,6 +870,39 @@ class LinkEditor(PLinkBase):
             crossing.over.draw(self.Crossings)
             self.update_smooth()
 
+    def get_over_arrow_path(self, crossing):
+        arrow_path = [crossing.over]
+        while crossing.under not in arrow_path:
+            most_recent = arrow_path[-1]
+            arrow_path.append(most_recent.end.out_arrow)
+        return arrow_path
+
+    def get_under_arrow_path(self, crossing):
+        arrow_path = [crossing.under]
+        while crossing.over not in arrow_path:
+            most_recent = arrow_path[-1]
+            arrow_path.append(most_recent.end.out_arrow)
+        return arrow_path
+
+    def over_under_has_crossings(self, over_arrow_path, under_arrow_path, clicked_cross):
+        no_crossings_over = True
+        no_crossings_under = True
+        cross_list_copy = self.Crossings.copy()
+        cross_list_copy.remove(clicked_cross)
+
+        for crossing in cross_list_copy:
+            if crossing.under in over_arrow_path:
+                no_crossings_over = False
+            elif crossing.over in over_arrow_path:
+                no_crossings_over = False
+            elif crossing.under in under_arrow_path:
+                no_crossings_under = False
+            elif crossing.over in under_arrow_path:
+                no_crossings_under = False
+            else:
+                pass
+        return (no_crossings_over, no_crossings_under)
+
     def single_click(self, event):
         """
         Event handler for mouse clicks.
@@ -920,17 +953,14 @@ class LinkEditor(PLinkBase):
             elif self.lock_var.get():
                 return
             elif start_vertex in self.CrossPoints:
-                print('single click on a crossing')
+                # print('single click on a crossing')
                 if self.r1_mode == True:
                     crossing = self.Crossings[self.CrossPoints.index(start_vertex)]
-                    print(self.Crossings)
-                    print(self.Vertices)
-                    print(self.Arrows)
-                elif self.r2_mode == True:
-                    start_vertex.expose()
-                    self.r2_vertices.append(start_vertex)
-                    if len(self.r2_vertices) >= 2:
-                        print('geq 2!')
+                    over_arrow_path = self.get_over_arrow_path(crossing)
+                    under_arrow_path = self.get_under_arrow_path(crossing)
+
+                    can_reduce_over, can_reduce_under = self.over_under_has_crossings(over_arrow_path, under_arrow_path, crossing)
+                    print(can_reduce_over, can_reduce_under)
                     return
                 else:
                     crossing = self.Crossings[self.CrossPoints.index(start_vertex)]
