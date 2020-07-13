@@ -585,7 +585,7 @@ class LinkEditor(PLinkBase):
         self.under_mode_arr = []
         self.r1_mode = False
         self.r2_mode = False
-        self.r2_vertices = []
+        self.r2_crossings = []
         self.state='start_state'
         self.canvas.bind('<Button-1>', self.single_click)
         self.canvas.bind('<Double-Button-1>', self.double_click)
@@ -903,6 +903,33 @@ class LinkEditor(PLinkBase):
                 pass
         return (no_crossings_over, no_crossings_under)
 
+    def get_over_arrow_path_2(self, crossing_begin, crossing_end):
+        arrow_path = [crossing_begin.over]
+        while crossing_end.over not in arrow_path:
+            most_recent = arrow_path[-1]
+            arrow_path.append(most_recent.end.out_arrow)
+        return arrow_path
+
+    def get_under_arrow_path_2(self, crossing_begin, crossing_end):
+        arrow_path = [crossing_begin.under]
+        while crossing_end.under not in arrow_path:
+            most_recent = arrow_path[-1]
+            arrow_path.append(most_recent.end.out_arrow)
+        return arrow_path
+
+    def over_under_has_crossings_2(self, over_arrow_path, under_arrow_path, crossing_begin, crossing_end):
+        no_crossings_over = True
+        no_crossings_under = True
+        cross_list_copy = self.Crossings.copy()
+        cross_list_copy.remove(crossing_begin)
+        cross_list_copy.remove(crossing_end)
+        # over case
+        for o_arrow in over_arrow_path:
+            for c in o_arrow.crossings():
+                pass
+        # under case
+        return (no_crossings_over, no_crossings_under)
+
     def single_click(self, event):
         """
         Event handler for mouse clicks.
@@ -961,6 +988,16 @@ class LinkEditor(PLinkBase):
 
                     can_reduce_over, can_reduce_under = self.over_under_has_crossings(over_arrow_path, under_arrow_path, crossing)
                     print(can_reduce_over, can_reduce_under)
+                    return
+                elif self.r2_mode == True:
+                    start_vertex.expose()
+                    crossing = self.Crossings[self.CrossPoints.index(start_vertex)]
+                    self.r2_crossings.append(crossing)
+                    if len(self.r2_crossings) == 2:
+                        over_arrow_path_2 = self.get_over_arrow_path(self.r2_crossings[0])
+                        under_arrow_path_2 = self.get_under_arrow_path(self.r2_crossings[1])
+                        can_reduce_over, can_reduce_under = self.over_under_has_crossings(over_arrow_path, under_arrow_path, crossing)
+                        print(can_reduce_over, can_reduce_under)
                     return
                 else:
                     crossing = self.Crossings[self.CrossPoints.index(start_vertex)]
@@ -1333,52 +1370,57 @@ class LinkEditor(PLinkBase):
             self.ActiveVertex.x, self.ActiveVertex.y = x, y
         # start code
         if self.vertex_mode:
-            in_arr = self.ActiveVertex.in_arrow
-            out_arr = self.ActiveVertex.out_arrow
-            vertex_separation_len = Arrow.epsilon + 12
-            x_0, y_0, x_1, y_1 = self.canvas.coords(self.LiveArrow3)
-            self.canvas.coords(self.LiveArrow3, x_0, y_0, x_1, y_1)
-            dotted_start_vertex = Vertex(x_0, y_0, self.canvas, style='hidden')
-            dotted_arrow = Arrow(dotted_start_vertex, self.ActiveVertex, self.canvas, color='red')
-            self.Vertices.append(dotted_start_vertex)
-            self.Arrows.append(dotted_arrow)
-            dotted_line_crossings = self.crossed_arrows(dotted_arrow, [dotted_arrow])
-            # calculations
-            count = 1
-            hypot = math.dist([x_0, y_0], [x_1, y_1])
-            sign_x = 1 if x_1 - x_0 >= 0 else -1
-            sign_y = 1 if y_1 - y_0 >= 0 else -1
-            theta = math.atan(abs((y_1 - y_0) / (x_1 - x_0)))
-            for n in dotted_line_crossings:
-                new_x = x_0 + (hypot + (count * vertex_separation_len)) * sign_x * math.cos(theta)
-                new_y = y_0 + (hypot + (count * vertex_separation_len)) * sign_y * math.sin(theta)
-                if new_x >= self.canvas.winfo_width() or new_x <= 0 or new_y >= self.canvas.winfo_height() or new_y <= 0:
-                    raise ValueError
-                edge = self.Arrows[n + count - 1]
-                new_v = Vertex(new_x, new_y, self.canvas, style='hidden')
-                new_v.set_color(edge.color)
-                arrow1 = Arrow(edge.start, new_v, self.canvas, color = edge.color)
-                arrow2 = Arrow(new_v, edge.end, self.canvas, color = edge.color)
-                self.Vertices.append(new_v)
-                new_v.expose()
-                self.Arrows.insert(n + count - 1, arrow1)
-                self.update_crossings(arrow1)
-                self.update_crosspoints()
-                arrow1.expose()
-                self.Arrows.insert(n + count, arrow2)
-                self.update_crossings(arrow2)
-                self.update_crosspoints()
-                arrow2.expose()
-                count += 1
-                self.destroy_arrow(edge)
-                arrow1.start.out_arrow = arrow1
-                arrow2.end.in_arrow = arrow2
-            self.Vertices.remove(dotted_start_vertex)
-            self.destroy_arrow(dotted_arrow)
-            self.ActiveVertex.in_arrow = in_arr
-            self.ActiveVertex.out_arrow = out_arr
-            self.ActiveVertex.update_arrows()
-            self.update_info()
+            # in_arr = self.ActiveVertex.in_arrow
+            # out_arr = self.ActiveVertex.out_arrow
+            # vertex_separation_len = Arrow.epsilon + 12
+            # x_0, y_0, x_1, y_1 = self.canvas.coords(self.LiveArrow3)
+            # self.canvas.coords(self.LiveArrow3, x_0, y_0, x_1, y_1)
+            # dotted_start_vertex = Vertex(x_0, y_0, self.canvas, style='hidden')
+            # dotted_arrow = Arrow(dotted_start_vertex, self.ActiveVertex, self.canvas, color='red')
+            # self.Vertices.append(dotted_start_vertex)
+            # self.Arrows.append(dotted_arrow)
+            # dotted_line_crossings = self.crossed_arrows(dotted_arrow, [dotted_arrow])
+            # # calculations
+            # count = 1
+            # hypot = math.dist([x_0, y_0], [x_1, y_1])
+            # sign_x = 1 if x_1 - x_0 >= 0 else -1
+            # sign_y = 1 if y_1 - y_0 >= 0 else -1
+            # theta = math.atan(abs((y_1 - y_0) / (x_1 - x_0)))
+            # for n in dotted_line_crossings:
+            #     new_x = x_0 + (hypot + (count * vertex_separation_len)) * sign_x * math.cos(theta)
+            #     new_y = y_0 + (hypot + (count * vertex_separation_len)) * sign_y * math.sin(theta)
+            #     if new_x >= self.canvas.winfo_width() or new_x <= 0 or new_y >= self.canvas.winfo_height() or new_y <= 0:
+            #         raise ValueError
+            #     edge = self.Arrows[n + count - 1]
+            #     new_v = Vertex(new_x, new_y, self.canvas, style='hidden')
+            #     new_v.set_color(edge.color)
+            #     arrow1 = Arrow(edge.start, new_v, self.canvas, color = edge.color)
+            #     arrow2 = Arrow(new_v, edge.end, self.canvas, color = edge.color)
+            #     self.Vertices.append(new_v)
+            #     new_v.expose()
+            #     self.Arrows.insert(n + count - 1, arrow1)
+            #     self.update_crossings(arrow1)
+            #     self.update_crosspoints()
+            #     arrow1.expose()
+            #     self.Arrows.insert(n + count, arrow2)
+            #     self.update_crossings(arrow2)
+            #     self.update_crosspoints()
+            #     arrow2.expose()
+            #     count += 1
+            #     self.destroy_arrow(edge)
+            #     arrow1.start.out_arrow = arrow1
+            #     arrow2.end.in_arrow = arrow2
+            # self.Vertices.remove(dotted_start_vertex)
+            # self.destroy_arrow(dotted_arrow)
+            # self.ActiveVertex.in_arrow = in_arr
+            # self.ActiveVertex.out_arrow = out_arr
+            # self.ActiveVertex.update_arrows()
+            # self.update_info()
+            c_list = []
+            c_list.extend(self.crossed_arrows(self.ActiveVertex.in_arrow, [self.ActiveVertex.in_arrow]))
+            c_list.extend(self.crossed_arrows(self.ActiveVertex.out_arrow, [self.ActiveVertex.out_arrow]))
+            if len(c_list) != len(self.active_crossing_data()):
+                raise ValueError
         # end code
         endpoint = None
         if self.ActiveVertex.is_endpoint():
@@ -1480,6 +1522,23 @@ class LinkEditor(PLinkBase):
             arrow.draw(self.Crossings)
 
     def crossed_arrows(self, arrow, ignore_list=[]):
+        """
+        Return a tuple containing the arrows of the diagram which are
+        crossed by the given arrow, in order along the given arrow.
+        """
+        if arrow is None:
+            return tuple()
+        arrow.vectorize()
+        crosslist = []
+        for n, diagram_arrow in enumerate(self.Arrows):
+            if arrow == diagram_arrow or diagram_arrow in ignore_list:
+                continue
+            t = arrow ^ diagram_arrow
+            if t is not None:
+                crosslist.append((t, n))
+        return tuple(n for _, n in sorted(crosslist))
+
+    def arrow_crossings(self, arrow, ignore_list=[]):
         """
         Return a tuple containing the arrows of the diagram which are
         crossed by the given arrow, in order along the given arrow.

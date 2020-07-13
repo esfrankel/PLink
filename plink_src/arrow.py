@@ -159,6 +159,26 @@ class Arrow:
             gap_b = gap if has_gap_b else 0
             segments.append( (a + gap_a, b - gap_b) )
         return [r(a) + r(b) for a, b in segments]
+    
+    def crossings(self, crossings):
+        c_list = []
+        for c in crossings:
+            if c.under == self or c.over == self:
+                c_list.append(c)
+        sign_x = -1
+        if self.end.x - self.start.x > 0:
+            sign_x = 1
+        if self.end.x - self.start.x == 0:
+            sign_x = 0
+        sign_y = -1
+        if self.end.y - self.start.y > 0:
+            sign_y = 1
+        if self.end.y - self.start.y == 0:
+            sign_y = 0
+        if sign_x != 0:
+            return(sorted(c_list, key = lambda x: x[0]))
+        else:
+            return(sorted(c_list, key = lambda x: x[1]))
 
     def draw(self, crossings=[], recurse=True, skip_frozen=True):
         if self.hidden or (self.frozen and skip_frozen):
