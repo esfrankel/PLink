@@ -585,6 +585,7 @@ class LinkEditor(PLinkBase):
         self.under_mode_arr = []
         self.r1_mode = False
         self.r2_mode = False
+        self.r2_vertices = []
         self.state='start_state'
         self.canvas.bind('<Button-1>', self.single_click)
         self.canvas.bind('<Double-Button-1>', self.double_click)
@@ -883,7 +884,7 @@ class LinkEditor(PLinkBase):
         x = self.canvas.canvasx(event.x)
         y = self.canvas.canvasy(event.y)
         self.clear_text()
-        start_vertex = Vertex(x, y, self.canvas, style='hidden')
+        start_vertex = Vertex(x, y, self.canvas, color='white', style='hidden')
         if self.state == 'start_state':
             if start_vertex in self.Vertices:
                 #print 'single click on a vertex'
@@ -925,6 +926,12 @@ class LinkEditor(PLinkBase):
                     print(self.Crossings)
                     print(self.Vertices)
                     print(self.Arrows)
+                elif self.r2_mode == True:
+                    start_vertex.expose()
+                    self.r2_vertices.append(start_vertex)
+                    if len(self.r2_vertices) >= 2:
+                        print('geq 2!')
+                    return
                 else:
                     crossing = self.Crossings[self.CrossPoints.index(start_vertex)]
                     if crossing.is_virtual:
