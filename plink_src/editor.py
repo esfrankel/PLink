@@ -153,7 +153,7 @@ class PLinkBase(LinkViewer):
         self._add_info_menu()
         self._add_tools_menu()
         self._add_style_menu()
-        self._add_reid_menu()
+        # self._add_reid_menu()
         self.window.config(menu=menubar)
         help_menu = Tk_.Menu(menubar, tearoff=0)
         help_menu.add_command(label='About PLink...', command=self.about)
@@ -580,12 +580,13 @@ class LinkEditor(PLinkBase):
         self.flipcheck = None
         self.shift_down = False
         self.vertex_mode = False
-        self.vertex_mode_arr = []
         self.under_mode = False
-        self.under_mode_arr = []
         self.r1_mode = False
         self.r2_mode = False
         self.r2_crossings = []
+        self.r3_mode = False
+        self.modes = False
+        self.modes_draw = []
         self.state='start_state'
         self.canvas.bind('<Button-1>', self.single_click)
         self.canvas.bind('<Double-Button-1>', self.double_click)
@@ -637,29 +638,29 @@ class LinkEditor(PLinkBase):
             tools_menu.add_command(label=self.cb_menu, command=self._do_callback)
         self.menubar.add_cascade(label='Tools', menu=tools_menu)
 
-    def _add_reid_menu(self):
-        self.reid_menu = reid_menu = Tk_.Menu(self.menubar, tearoff=0)
-        reid_menu.add_command(label='Reidemeister 1',
-                       command=self.reid_one)
-        reid_menu.add_command(label='Reidemeister 2',
-                       command=self.reid_two)
-        self.menubar.add_cascade(label='Reidemeister', menu=reid_menu)
+    # def _add_reid_menu(self):
+    #     self.reid_menu = reid_menu = Tk_.Menu(self.menubar, tearoff=0)
+    #     reid_menu.add_command(label='Reidemeister 1',
+    #                    command=self.reid_one)
+    #     reid_menu.add_command(label='Reidemeister 2',
+    #                    command=self.reid_two)
+    #     self.menubar.add_cascade(label='Reidemeister', menu=reid_menu)
 
-    def reid_one(self):
-        if self.r1_mode:
-            self.r1_mode = False
-            print("No longer in r1 mode")
-        else:
-            self.r1_mode = True
-            print("In r1 mode")
+    # def reid_one(self):
+    #     if self.r1_mode:
+    #         self.r1_mode = False
+    #         print("No longer in r1 mode")
+    #     else:
+    #         self.r1_mode = True
+    #         print("In r1 mode")
 
-    def reid_two(self):
-        if self.r2_mode:
-            self.r2_mode = False
-            print("No longer in r2 mode")
-        else:
-            self.r2_mode = True
-            print("In r2 mode")
+    # def reid_two(self):
+    #     if self.r2_mode:
+    #         self.r2_mode = False
+    #         print("No longer in r2 mode")
+    #     else:
+    #         self.r2_mode = True
+    #         print("In r2 mode")
 
     def _key_release(self, event):
         """
@@ -683,29 +684,123 @@ class LinkEditor(PLinkBase):
         if key.lower() == 'v':
             if self.vertex_mode:
                 self.vertex_mode = False
-                self.canvas.delete(self.vertex_mode_arr[len(self.vertex_mode_arr) - 1])
-                print("No longer in vertex mode")
+                self.modes = False
+                self.canvas.delete(self.modes_draw[0])
+                self.modes_draw = []
+                # print("No longer in vertex mode")
             else:
+                if self.modes:
+                    self.canvas.delete(self.modes_draw[0])
+                    self.modes_draw = []
+                    self.vertex_mode = False
+                    self.under_mode = False
+                    self.r1_mode = False
+                    self.r2_mode = False
+                    self.r3_mode = False
+                self.modes = True
                 self.vertex_mode = True
-                self.vertex_mode_arr.append(self.canvas.create_text(self.canvas.winfo_width() - 80, 5,
+                self.modes_draw.append(self.canvas.create_text(self.canvas.winfo_width() - 80, 5,
                                             text="vertex mode",
-                                            fill="blue",
+                                            fill="red",
                                             anchor=Tk_.NW,
                                             font='Helvetica 16 bold'))
-                print("In vertex mode")
+                # print("In vertex mode")
         if key.lower() == 'u':
             if self.under_mode:
                 self.under_mode = False
-                self.canvas.delete(self.under_mode_arr[len(self.under_mode_arr) - 1])
-                print("No longer in under mode")
+                self.modes = False
+                self.canvas.delete(self.modes_draw[0])
+                self.modes_draw = []
+                # print("No longer in vertex mode")
             else:
+                if self.modes:
+                    self.canvas.delete(self.modes_draw[0])
+                    self.modes_draw = []
+                    self.vertex_mode = False
+                    self.under_mode = False
+                    self.r1_mode = False
+                    self.r2_mode = False
+                    self.r3_mode = False
+                self.modes = True
                 self.under_mode = True
-                self.under_mode_arr.append(self.canvas.create_text(self.canvas.winfo_width() - 80, 15,
+                self.modes_draw.append(self.canvas.create_text(self.canvas.winfo_width() - 80, 5,
                                             text="under mode",
                                             fill="red",
                                             anchor=Tk_.NW,
                                             font='Helvetica 16 bold'))
-                print("In under mode")
+                # print("In vertex mode")
+        if key.lower() == '1':
+            if self.r1_mode:
+                self.r1_mode = False
+                self.modes = False
+                self.canvas.delete(self.modes_draw[0])
+                self.modes_draw = []
+                # print("No longer in vertex mode")
+            else:
+                if self.modes:
+                    self.canvas.delete(self.modes_draw[0])
+                    self.modes_draw = []
+                    self.vertex_mode = False
+                    self.under_mode = False
+                    self.r1_mode = False
+                    self.r2_mode = False
+                    self.r3_mode = False
+                self.modes = True
+                self.r1_mode = True
+                self.modes_draw.append(self.canvas.create_text(self.canvas.winfo_width() - 80, 5,
+                                            text="r1 mode",
+                                            fill="red",
+                                            anchor=Tk_.NW,
+                                            font='Helvetica 16 bold'))
+                # print("In vertex mode")
+        if key.lower() == '2':
+            if self.r2_mode:
+                self.r2_mode = False
+                self.modes = False
+                self.canvas.delete(self.modes_draw[0])
+                self.modes_draw = []
+                # print("No longer in vertex mode")
+            else:
+                if self.modes:
+                    self.canvas.delete(self.modes_draw[0])
+                    self.modes_draw = []
+                    self.vertex_mode = False
+                    self.under_mode = False
+                    self.r1_mode = False
+                    self.r2_mode = False
+                    self.r3_mode = False
+                self.modes = True
+                self.r2_mode = True
+                self.modes_draw.append(self.canvas.create_text(self.canvas.winfo_width() - 80, 5,
+                                            text="r2 mode",
+                                            fill="red",
+                                            anchor=Tk_.NW,
+                                            font='Helvetica 16 bold'))
+                # print("In vertex mode")
+        if key.lower() == '3':
+            if self.r3_mode:
+                self.r3_mode = False
+                self.modes = False
+                self.canvas.delete(self.modes_draw[0])
+                self.modes_draw = []
+                # print("No longer in vertex mode")
+            else:
+                if self.modes:
+                    self.canvas.delete(self.modes_draw[0])
+                    self.modes_draw = []
+                    self.vertex_mode = False
+                    self.under_mode = False
+                    self.r1_mode = False
+                    self.r2_mode = False
+                    self.r3_mode = False
+                self.modes = True
+                self.r3_mode = True
+                self.modes_draw.append(self.canvas.create_text(self.canvas.winfo_width() - 80, 5,
+                                            text="r3 mode",
+                                            fill="red",
+                                            anchor=Tk_.NW,
+                                            font='Helvetica 16 bold'))
+                # print("In vertex mode")
         if key.lower() == 'p':
             print("Vertices", self.Vertices)
             print("Arrows", self.Arrows)
@@ -921,13 +1016,20 @@ class LinkEditor(PLinkBase):
         no_crossings_over = True
         no_crossings_under = True
         cross_list_copy = self.Crossings.copy()
-        cross_list_copy.remove(crossing_begin)
-        cross_list_copy.remove(crossing_end)
+        o_list = []
+        u_list = []
         # over case
         for o_arrow in over_arrow_path:
-            for c in o_arrow.crossings():
-                pass
+            o_list.extend(o_arrow.crossings_list(cross_list_copy))
         # under case
+        for u_arrow in under_arrow_path:
+            u_list.extend(u_arrow.crossings_list(cross_list_copy))
+        begin_index_o = o_list.index(crossing_begin)
+        begin_index_u = u_list.index(crossing_begin)
+        end_index_o = o_list.index(crossing_end)
+        end_index_u = u_list.index(crossing_end)
+        o_list = o_list[begin_index_o:end_index_o + 1]
+        u_list = u_list[begin_index_u:end_index_u + 1]
         return (no_crossings_over, no_crossings_under)
 
     def single_click(self, event):
@@ -1054,10 +1156,78 @@ class LinkEditor(PLinkBase):
                     crossing = self.Crossings[self.CrossPoints.index(start_vertex)]
                     self.r2_crossings.append(crossing)
                     if len(self.r2_crossings) == 2:
-                        over_arrow_path_2 = self.get_over_arrow_path(self.r2_crossings[0])
-                        under_arrow_path_2 = self.get_under_arrow_path(self.r2_crossings[1])
-                        can_reduce_over, can_reduce_under = self.over_under_has_crossings(over_arrow_path, under_arrow_path, crossing)
-                        print(can_reduce_over, can_reduce_under)
+                        over_arrow_path_2 = self.get_over_arrow_path_2(self.r2_crossings[0], self.r2_crossings[1])
+                        under_arrow_path_2 = self.get_under_arrow_path_2(self.r2_crossings[0], self.r2_crossings[1])
+                        can_reduce_over, can_reduce_under = self.over_under_has_crossings_2(over_arrow_path_2, 
+                                    under_arrow_path_2, self.r2_crossings[0], self.r2_crossings[1])
+                        if can_reduce_over or can_reduce_under:
+                            cross1 = self.r2_crossings[0]
+                            cross2 = self.r2_crossings[1]
+                            segments1 = cross1.under.find_segments(self.Crossings)
+                            segments2 = cross2.under.find_segments(self.Crossings)
+                            for i in range(1, len(segments1)):
+                                if ((segments1[i-1][2] <= cross1.x <= segments1[i][0] and
+                                    segments1[i-1][3] <= cross1.y <= segments1[i][1]) or
+                                    (segments1[i-1][2] >= cross1.x >= segments1[i][0] and
+                                    segments1[i-1][3] >= cross1.y >= segments1[i][1])):
+                                    v1 = Vertex(segments1[i-1][2], segments1[i-1][3], self.canvas, style='hidden')
+                                    v2 = Vertex(segments1[i][0], segments1[i][1], self.canvas, style='hidden')
+                                    v1.set_color(cross1.under.color)
+                                    v2.set_color(cross1.over.color)
+                                    arrow1 = Arrow(cross1.over.start, v1, self.canvas, color = cross1.under.color)
+                                    arrow2 = Arrow(v2, cross1.over.end, self.canvas, color = cross1.over.color)
+                                    #     self.Vertices.append(new_v)
+                                    self.Vertices.append(v1)
+                                    self.Vertices.append(v2)
+                                    #     new_v.expose()
+                                    v1.expose()
+                                    v2.expose()
+                                    #     self.Arrows.insert(n + count - 1, arrow1)
+                                    self.Arrows.append(arrow1)
+                                    self.update_crossings(arrow1)
+                                    self.update_crosspoints()
+                                    arrow1.expose()
+                                    self.Arrows.append(arrow2)
+                                    self.update_crossings(arrow2)
+                                    self.update_crosspoints()
+                                    arrow2.expose()
+                                    self.destroy_arrow(cross1.over)
+                                    arrow1.start.out_arrow = arrow1
+                                    arrow2.end.in_arrow = arrow2
+                            
+                            for i in range(1, len(segments2)):
+                                if ((segments2[i-1][2] <= cross2.x <= segments2[i][0] and
+                                    segments2[i-1][3] <= cross2.y <= segments2[i][1]) or
+                                    (segments2[i-1][2] >= cross2.x >= segments2[i][0] and
+                                    segments2[i-1][3] >= cross2.y >= segments2[i][1])):
+                                    v1 = Vertex(segments2[i-1][2], segments2[i-1][3], self.canvas, style='hidden')
+                                    v2 = Vertex(segments2[i][0], segments2[i][1], self.canvas, style='hidden')
+                                    v1.set_color(cross2.under.color)
+                                    v2.set_color(cross2.over.color)
+                                    arrow1 = Arrow(cross2.over.start, v1, self.canvas, color = cross2.under.color)
+                                    arrow2 = Arrow(v2, cross2.over.end, self.canvas, color = cross2.over.color)
+                                    #     self.Vertices.append(new_v)
+                                    self.Vertices.append(v1)
+                                    self.Vertices.append(v2)
+                                    #     new_v.expose()
+                                    v1.expose()
+                                    v2.expose()
+                                    #     self.Arrows.insert(n + count - 1, arrow1)
+                                    self.Arrows.append(arrow1)
+                                    self.update_crossings(arrow1)
+                                    self.update_crosspoints()
+                                    arrow1.expose()
+                                    self.Arrows.append(arrow2)
+                                    self.update_crossings(arrow2)
+                                    self.update_crosspoints()
+                                    arrow2.expose()
+                                    self.destroy_arrow(cross2.over)
+                                    arrow1.start.out_arrow = arrow1
+                                    arrow2.end.in_arrow = arrow2
+                        else:
+                            tkMessageBox.showwarning(
+                                'Not implemented',
+                                'Sorry! R2 mode does not work in this setting.')
                     return
                 else:
                     crossing = self.Crossings[self.CrossPoints.index(start_vertex)]

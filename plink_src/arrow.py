@@ -160,7 +160,7 @@ class Arrow:
             segments.append( (a + gap_a, b - gap_b) )
         return [r(a) + r(b) for a, b in segments]
     
-    def crossings(self, crossings):
+    def crossings_list(self, crossings):
         c_list = []
         for c in crossings:
             if c.under == self or c.over == self:
@@ -175,10 +175,16 @@ class Arrow:
             sign_y = 1
         if self.end.y - self.start.y == 0:
             sign_y = 0
-        if sign_x != 0:
-            return(sorted(c_list, key = lambda x: x[0]))
+        if sign_x == 1:
+            c_list.sort(key=lambda c: c.x)
+        elif sign_x == -1:
+            c_list.sort(key=lambda c: c.x, reverse=True)
         else:
-            return(sorted(c_list, key = lambda x: x[1]))
+            if sign_y == 1:
+                c_list.sort(key=lambda c: c.y)
+            else:
+                c_list.sort(key=lambda c: c.y, reverse=True)
+        return c_list
 
     def draw(self, crossings=[], recurse=True, skip_frozen=True):
         if self.hidden or (self.frozen and skip_frozen):
