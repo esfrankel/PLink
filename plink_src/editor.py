@@ -1031,6 +1031,30 @@ class LinkEditor(PLinkBase):
         o_list = o_list[begin_index_o:end_index_o + 1]
         u_list = u_list[begin_index_u:end_index_u + 1]
         return (no_crossings_over, no_crossings_under)
+    
+    def chirality(self, crossing):
+        over_color = crossing.over.color
+        overs = []
+        over_sum = 0
+        over_chirality = False
+        under_color = crossing.under.color
+        unders = []
+        under_sum = 0
+        under_chirality = False
+        for arrow in self.Arrows:
+            if arrow.color == under_color:
+                unders.append(arrow)
+            if arrow.color == over_color:
+                overs.append(arrow)
+        for i in overs:
+            over_sum += (i.end.x - i.start.x) * (i.end.y + i.start.y)
+        for j in unders:
+            under_sum += (j.end.x - j.start.x) * (j.end.y + j.start.y)
+        if over_sum <= 0:
+            over_chirality = True
+        if under_sum <= 0:
+            under_chirality = True
+        return (over_chirality, under_chirality)
 
     def single_click(self, event):
         """
@@ -1152,82 +1176,213 @@ class LinkEditor(PLinkBase):
                             'Sorry! R1 mode does not work in this setting.')
                     return
                 elif self.r2_mode == True:
-                    start_vertex.expose()
-                    crossing = self.Crossings[self.CrossPoints.index(start_vertex)]
-                    self.r2_crossings.append(crossing)
+                    # start_vertex.expose()
+                    self.r2_crossings.append(start_vertex)
+                    print(self.r2_crossings)
+                    # self.r2_crossings.sort()
                     if len(self.r2_crossings) == 2:
-                        over_arrow_path_2 = self.get_over_arrow_path_2(self.r2_crossings[0], self.r2_crossings[1])
-                        under_arrow_path_2 = self.get_under_arrow_path_2(self.r2_crossings[0], self.r2_crossings[1])
+                        cross1 = self.Crossings[self.CrossPoints.index(self.r2_crossings[0])]
+                        cross2 = self.Crossings[self.CrossPoints.index(self.r2_crossings[1])]
+                        over_arrow_path_2 = self.get_over_arrow_path_2(cross1, cross2)
+                        under_arrow_path_2 = self.get_under_arrow_path_2(cross1, cross2)
                         can_reduce_over, can_reduce_under = self.over_under_has_crossings_2(over_arrow_path_2, 
-                                    under_arrow_path_2, self.r2_crossings[0], self.r2_crossings[1])
+                                    under_arrow_path_2, cross1, cross2)
                         if can_reduce_over or can_reduce_under:
-                            cross1 = self.r2_crossings[0]
-                            cross2 = self.r2_crossings[1]
                             segments1 = cross1.under.find_segments(self.Crossings)
                             segments2 = cross2.under.find_segments(self.Crossings)
+                            same_dir1 = self.chirality(cross1)
+                            same_dir2 = self.chirality(cross2)
+                            start_v = cross1.under.start
+                            end_v = cross2.under.end
+                            start_inner = cross1.under.start
+                            end_inner = cross1.under.start
                             for i in range(1, len(segments1)):
-                                if ((segments1[i-1][2] <= cross1.x <= segments1[i][0] and
+                                if ((segments1[i-1][2] <= cross1.x <= segments1[i][0] or
                                     segments1[i-1][3] <= cross1.y <= segments1[i][1]) or
-                                    (segments1[i-1][2] >= cross1.x >= segments1[i][0] and
+                                    (segments1[i-1][2] >= cross1.x >= segments1[i][0] or
                                     segments1[i-1][3] >= cross1.y >= segments1[i][1])):
                                     v1 = Vertex(segments1[i-1][2], segments1[i-1][3], self.canvas, style='hidden')
                                     v2 = Vertex(segments1[i][0], segments1[i][1], self.canvas, style='hidden')
-                                    v1.set_color(cross1.under.color)
-                                    v2.set_color(cross1.over.color)
-                                    arrow1 = Arrow(cross1.over.start, v1, self.canvas, color = cross1.under.color)
-                                    arrow2 = Arrow(v2, cross1.over.end, self.canvas, color = cross1.over.color)
-                                    #     self.Vertices.append(new_v)
-                                    self.Vertices.append(v1)
-                                    self.Vertices.append(v2)
-                                    #     new_v.expose()
-                                    v1.expose()
-                                    v2.expose()
-                                    #     self.Arrows.insert(n + count - 1, arrow1)
-                                    self.Arrows.append(arrow1)
-                                    self.update_crossings(arrow1)
-                                    self.update_crosspoints()
-                                    arrow1.expose()
-                                    self.Arrows.append(arrow2)
-                                    self.update_crossings(arrow2)
-                                    self.update_crosspoints()
-                                    arrow2.expose()
-                                    self.destroy_arrow(cross1.over)
-                                    arrow1.start.out_arrow = arrow1
-                                    arrow2.end.in_arrow = arrow2
-                            
+                                    v1.set_color(cross1.over.color)
+                                    v2.set_color(cross1.under.color)
+                                    if same_dir1[0] == same_dir1[1]:
+                                        print(1)
+                                        cross1.over.end.color = cross1.under.color
+                                        arrow1 = Arrow(cross1.over.start, v1, self.canvas, color = cross1.over.color)
+                                        arrow2 = Arrow(cross1.over.end, v2, self.canvas, color = cross1.under.color)
+                                        arrow3 = Arrow(v2, cross1.under.end, self.canvas, color = cross1.under.color)
+                                        #     self.Vertices.append(new_v)
+                                        self.Vertices.append(v1)
+                                        self.Vertices.append(v2)
+                                        #     new_v.expose()
+                                        v1.expose()
+                                        v2.expose()
+                                        cross1.over.end.expose()
+                                        #     self.Arrows.insert(n + count - 1, arrow1)
+                                        self.Arrows.append(arrow1)
+                                        self.update_crossings(arrow1)
+                                        self.update_crosspoints()
+                                        arrow1.expose()
+                                        self.Arrows.append(arrow2)
+                                        self.update_crossings(arrow2)
+                                        self.update_crosspoints()
+                                        arrow2.expose()
+                                        self.Arrows.append(arrow3)
+                                        self.update_crossings(arrow3)
+                                        self.update_crosspoints()
+                                        arrow3.expose()
+                                        arrow1.start.out_arrow = arrow1
+                                        arrow2.start.out_arrow = arrow2
+                                        arrow3.start.out_arrow = arrow3
+                                        arrow1.end.in_arrow = arrow1
+                                        arrow2.end.in_arrow = arrow2
+                                        arrow3.end.in_arrow = arrow3
+                                        start_inner = v1
+                                    else:
+                                        print(2)
+                                        cross1.over.end.color = cross1.under.color
+                                        arrow1 = Arrow(cross1.over.start, v1, self.canvas, color = cross1.over.color)
+                                        arrow2 = Arrow(cross1.over.end, v2, self.canvas, color = cross1.under.color)
+                                        arrow3 = Arrow(v2, cross1.under.end, self.canvas, color = cross1.under.color)
+                                        #     self.Vertices.append(new_v)
+                                        self.Vertices.append(v1)
+                                        self.Vertices.append(v2)
+                                        #     new_v.expose()
+                                        v1.expose()
+                                        v2.expose()
+                                        cross1.over.end.expose()
+                                        #     self.Arrows.insert(n + count - 1, arrow1)
+                                        self.Arrows.append(arrow1)
+                                        self.update_crossings(arrow1)
+                                        self.update_crosspoints()
+                                        arrow1.expose()
+                                        self.Arrows.append(arrow2)
+                                        self.update_crossings(arrow2)
+                                        self.update_crosspoints()
+                                        arrow2.expose()
+                                        self.Arrows.append(arrow3)
+                                        self.update_crossings(arrow3)
+                                        self.update_crosspoints()
+                                        arrow3.expose()
+                                        arrow1.start.out_arrow = arrow1
+                                        arrow2.start.out_arrow = arrow2
+                                        arrow3.start.out_arrow = arrow3
+                                        arrow1.end.in_arrow = arrow1
+                                        arrow2.end.in_arrow = arrow2
+                                        arrow3.end.in_arrow = arrow3
+                                        start_inner = v1
+
                             for i in range(1, len(segments2)):
-                                if ((segments2[i-1][2] <= cross2.x <= segments2[i][0] and
+                                if ((segments2[i-1][2] <= cross2.x <= segments2[i][0] or
                                     segments2[i-1][3] <= cross2.y <= segments2[i][1]) or
-                                    (segments2[i-1][2] >= cross2.x >= segments2[i][0] and
+                                    (segments2[i-1][2] >= cross2.x >= segments2[i][0] or
                                     segments2[i-1][3] >= cross2.y >= segments2[i][1])):
                                     v1 = Vertex(segments2[i-1][2], segments2[i-1][3], self.canvas, style='hidden')
                                     v2 = Vertex(segments2[i][0], segments2[i][1], self.canvas, style='hidden')
+                                    print(v1, v2)
                                     v1.set_color(cross2.under.color)
                                     v2.set_color(cross2.over.color)
-                                    arrow1 = Arrow(cross2.over.start, v1, self.canvas, color = cross2.under.color)
-                                    arrow2 = Arrow(v2, cross2.over.end, self.canvas, color = cross2.over.color)
-                                    #     self.Vertices.append(new_v)
-                                    self.Vertices.append(v1)
-                                    self.Vertices.append(v2)
-                                    #     new_v.expose()
-                                    v1.expose()
-                                    v2.expose()
-                                    #     self.Arrows.insert(n + count - 1, arrow1)
-                                    self.Arrows.append(arrow1)
-                                    self.update_crossings(arrow1)
-                                    self.update_crosspoints()
-                                    arrow1.expose()
-                                    self.Arrows.append(arrow2)
-                                    self.update_crossings(arrow2)
-                                    self.update_crosspoints()
-                                    arrow2.expose()
-                                    self.destroy_arrow(cross2.over)
-                                    arrow1.start.out_arrow = arrow1
-                                    arrow2.end.in_arrow = arrow2
+                                    if same_dir2[0] == same_dir2[1]:
+                                        print(3)
+                                        cross2.over.start.color = cross2.under.color
+                                        arrow1 = Arrow(v1, cross2.over.start, self.canvas, color = cross2.under.color)
+                                        arrow2 = Arrow(v2, cross2.over.end, self.canvas, color = cross2.over.color)
+                                        arrow3 = Arrow(cross2.under.start, v1, self.canvas, color = cross2.under.color)
+                                        #     self.Vertices.append(new_v)
+                                        self.Vertices.append(v1)
+                                        self.Vertices.append(v2)
+                                        #     new_v.expose()
+                                        v1.expose()
+                                        v2.expose()
+                                        cross2.over.start.expose()
+                                        #     self.Arrows.insert(n + count - 1, arrow1)
+                                        self.Arrows.append(arrow1)
+                                        self.update_crossings(arrow1)
+                                        self.update_crosspoints()
+                                        arrow1.expose()
+                                        self.Arrows.append(arrow2)
+                                        self.update_crossings(arrow2)
+                                        self.update_crosspoints()
+                                        arrow2.expose()
+                                        self.Arrows.append(arrow3)
+                                        self.update_crossings(arrow3)
+                                        self.update_crosspoints()
+                                        arrow3.expose()
+                                        arrow1.start.out_arrow = arrow1
+                                        arrow2.start.out_arrow = arrow2
+                                        arrow3.start.out_arrow = arrow3
+                                        arrow1.end.in_arrow = arrow1
+                                        arrow2.end.in_arrow = arrow2
+                                        arrow3.end.in_arrow = arrow3
+                                        end_inner = v2
+                                    else:
+                                        print(4)
+                                        cross2.over.start.color = cross2.under.color
+                                        arrow1 = Arrow(v1, cross2.over.start, self.canvas, color = cross2.under.color)
+                                        arrow2 = Arrow(v2, cross2.over.end, self.canvas, color = cross2.over.color)
+                                        arrow3 = Arrow(cross2.under.start, v1, self.canvas, color = cross2.under.color)
+                                        #     self.Vertices.append(new_v)
+                                        self.Vertices.append(v1)
+                                        self.Vertices.append(v2)
+                                        #     new_v.expose()
+                                        v1.expose()
+                                        v2.expose()
+                                        cross2.over.start.expose()
+                                        #     self.Arrows.insert(n + count - 1, arrow1)
+                                        self.Arrows.append(arrow1)
+                                        self.update_crossings(arrow1)
+                                        self.update_crosspoints()
+                                        arrow1.expose()
+                                        self.Arrows.append(arrow2)
+                                        self.update_crossings(arrow2)
+                                        self.update_crosspoints()
+                                        arrow2.expose()
+                                        self.Arrows.append(arrow3)
+                                        self.update_crossings(arrow3)
+                                        self.update_crosspoints()
+                                        arrow3.expose()
+                                        arrow1.start.out_arrow = arrow1
+                                        arrow2.start.out_arrow = arrow2
+                                        arrow3.start.out_arrow = arrow3
+                                        arrow1.end.in_arrow = arrow1
+                                        arrow2.end.in_arrow = arrow2
+                                        arrow3.end.in_arrow = arrow3
+                                        end_inner = v2
+                            
+                            arr = Arrow(start_inner, end_inner, self.canvas, color = cross1.over.color)
+                            self.Arrows.append(arr)
+                            self.update_crossings(arr)
+                            self.update_crosspoints()
+                            arr.expose() 
+                            # delete arrows
+                            self.Arrows.remove(cross1.over)
+                            cross1.over.erase()
+                            self.Crossings = [c for c in self.Crossings if cross1.over not in c]
+                            self.Arrows.remove(cross1.under)
+                            cross1.under.erase()
+                            self.Crossings = [c for c in self.Crossings if cross1.under not in c]
+                            if cross2.over in self.Arrows:
+                                self.Arrows.remove(cross2.over)
+                                cross2.over.erase()
+                                self.Crossings = [c for c in self.Crossings if cross2.over not in c]
+                            if cross2.under in self.Arrows:
+                                self.Arrows.remove(cross2.under)
+                                cross2.under.erase()
+                                self.Crossings = [c for c in self.Crossings if cross2.under not in c]
+
+                            start_v.out_arrow.expose()
+                            end_v.in_arrow.expose()
                         else:
                             tkMessageBox.showwarning(
                                 'Not implemented',
                                 'Sorry! R2 mode does not work in this setting.')
+                        # self.r2_crossings[0].erase()
+                        # self.r2_crossings[1].erase()
+                        # self.Vertices.remove(self.r2_crossings[0])
+                        # self.Vertices.remove(self.r2_crossings[1])
+                        print(22)
+                        self.r2_crossings.clear()
+                        self.update_info()
                     return
                 else:
                     crossing = self.Crossings[self.CrossPoints.index(start_vertex)]
