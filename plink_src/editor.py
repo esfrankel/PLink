@@ -585,6 +585,7 @@ class LinkEditor(PLinkBase):
         self.r2_mode = False
         self.r2_crossings = []
         self.r3_mode = False
+        self.r3_helper_tuple = None
         self.modes = False
         self.modes_draw = []
         self.state='start_state'
@@ -998,6 +999,29 @@ class LinkEditor(PLinkBase):
                 pass
         return (no_crossings_over, no_crossings_under)
 
+    def all_oriented(self, arrow):
+        """
+        returns boolean tuple (can_reduce, is_under)
+        """
+        no_crossings_over = True
+        no_crossings_under = True
+        cross_list_copy = self.Crossings
+        for crossing in cross_list_copy:
+            if arrow == crossing.under:
+                no_crossings_under = False
+            elif arrow == crossing.over:
+                no_crossings_over = False
+            else:
+                pass
+        if no_crossings_over and no_crossings_under: # no crossings at all
+            return (True, self.under_mode)
+        elif no_crossings_over and not no_crossings_under: # crossings are under
+            return (True, True)
+        elif not no_crossings_over and no_crossings_under: # crossings are over
+            return (True, False)
+        else:
+            return (False, None)
+
     def get_over_arrow_path_2(self, crossing_begin, crossing_end):
         arrow_path = [crossing_begin.over]
         while crossing_end.over not in arrow_path:
@@ -1050,34 +1074,56 @@ class LinkEditor(PLinkBase):
         if self.state == 'start_state':
             if start_vertex in self.Vertices:
                 #print 'single click on a vertex'
-                self.state = 'dragging_state'
-                self.hide_DT()
-                self.hide_labels()
-                self.update_info()
-                self.canvas.config(cursor=closed_hand_cursor)
-                self.ActiveVertex = self.Vertices[
-                    self.Vertices.index(start_vertex)]
-                self.ActiveVertex.freeze()
-                self.saved_crossing_data = self.active_crossing_data()
-                x1, y1 = self.ActiveVertex.point()
-                if self.ActiveVertex.in_arrow is None and self.ActiveVertex.out_arrow is None:
-                    # If this is an isolated vertex (likely created
-                    # unintentionally), switch to drawing mode.
-                    self.double_click(event)
+                if self.r3_mode:
+                    click_vertex = self.Vertices[self.Vertices.index(start_vertex)]
+                    arrow = click_vertex.out_arrow
+                    if arrow is None:
+                        pass # TODO: flash message that you can't do it on this type of vertex
+                    else:
+                        end_vert = arrow.end
+                        truth_tuple = self.all_oriented(arrow)
+                        if truth_tuple[0]:
+                            self.r3_helper_tuple = (truth_tuple[1], end_vert)
+                            print(arrow)
+                            print(self.Arrows)
+                            self.destroy_arrow(arrow)
+                            self.update_crosspoints()
+                            self.update_info()
+                            x1, y1 = click_vertex.point()
+                            self.ActiveVertex = click_vertex
+                            self.goto_drawing_state(x1, y1)
+                        else:
+                            pass # TODO: flash message that it didn't hold
                     return
-                if self.ActiveVertex.in_arrow:
-                    x0, y0 = self.ActiveVertex.in_arrow.start.point()
-                    self.ActiveVertex.in_arrow.freeze()
-                    self.LiveArrow1 = self.canvas.create_line(x0, y0, x1, y1, fill='red')
-                if self.ActiveVertex.out_arrow:
-                    x0, y0 = self.ActiveVertex.out_arrow.end.point()
-                    self.ActiveVertex.out_arrow.freeze()
-                    self.LiveArrow2 = self.canvas.create_line(x0, y0, x1, y1, fill='red')
-                if self.ActiveVertex.in_arrow and self.ActiveVertex.out_arrow:
-                    x0, y0 = self.ActiveVertex.out_arrow.start.point()
-                    self.LiveArrow3 = self.canvas.create_line(x0, y0, x1, y1, fill='red', dash=(4, 4))
-                if self.lock_var.get():
-                    self.attach_cursor('start')
+                else:
+                    self.state = 'dragging_state'
+                    self.hide_DT()
+                    self.hide_labels()
+                    self.update_info()
+                    self.canvas.config(cursor=closed_hand_cursor)
+                    self.ActiveVertex = self.Vertices[
+                        self.Vertices.index(start_vertex)]
+                    self.ActiveVertex.freeze()
+                    self.saved_crossing_data = self.active_crossing_data()
+                    x1, y1 = self.ActiveVertex.point()
+                    if self.ActiveVertex.in_arrow is None and self.ActiveVertex.out_arrow is None:
+                        # If this is an isolated vertex (likely created
+                        # unintentionally), switch to drawing mode.
+                        self.double_click(event)
+                        return
+                    if self.ActiveVertex.in_arrow:
+                        x0, y0 = self.ActiveVertex.in_arrow.start.point()
+                        self.ActiveVertex.in_arrow.freeze()
+                        self.LiveArrow1 = self.canvas.create_line(x0, y0, x1, y1, fill='red')
+                    if self.ActiveVertex.out_arrow:
+                        x0, y0 = self.ActiveVertex.out_arrow.end.point()
+                        self.ActiveVertex.out_arrow.freeze()
+                        self.LiveArrow2 = self.canvas.create_line(x0, y0, x1, y1, fill='red')
+                    if self.ActiveVertex.in_arrow and self.ActiveVertex.out_arrow:
+                        x0, y0 = self.ActiveVertex.out_arrow.start.point()
+                        self.LiveArrow3 = self.canvas.create_line(x0, y0, x1, y1, fill='red', dash=(4, 4))
+                    if self.lock_var.get():
+                        self.attach_cursor('start')
                 return
             elif self.lock_var.get():
                 return
@@ -1158,7 +1204,7 @@ class LinkEditor(PLinkBase):
                     if len(self.r2_crossings) == 2:
                         over_arrow_path_2 = self.get_over_arrow_path_2(self.r2_crossings[0], self.r2_crossings[1])
                         under_arrow_path_2 = self.get_under_arrow_path_2(self.r2_crossings[0], self.r2_crossings[1])
-                        can_reduce_over, can_reduce_under = self.over_under_has_crossings_2(over_arrow_path_2, 
+                        can_reduce_over, can_reduce_under = self.over_under_has_crossings_2(over_arrow_path_2,
                                     under_arrow_path_2, self.r2_crossings[0], self.r2_crossings[1])
                         if can_reduce_over or can_reduce_under:
                             cross1 = self.r2_crossings[0]
@@ -1194,7 +1240,7 @@ class LinkEditor(PLinkBase):
                                     self.destroy_arrow(cross1.over)
                                     arrow1.start.out_arrow = arrow1
                                     arrow2.end.in_arrow = arrow2
-                            
+
                             for i in range(1, len(segments2)):
                                 if ((segments2[i-1][2] <= cross2.x <= segments2[i][0] and
                                     segments2[i-1][3] <= cross2.y <= segments2[i][1]) or
@@ -1309,30 +1355,59 @@ class LinkEditor(PLinkBase):
                                  color=this_color)
                 self.Arrows.append(next_arrow)
             next_vertex.set_color(next_arrow.color)
-            if next_vertex in [v for v in self.Vertices if v.is_endpoint()]:
-                #print 'melding vertices'
-                if not self.generic_arrow(next_arrow):
-                    self.alert()
+            if self.r3_mode:
+                if next_vertex == self.r3_helper_tuple[1]:
+                    print("finished")
+                    #print 'melding vertices'
+                    if not self.generic_arrow(next_arrow):
+                        self.alert()
+                        return
+                    next_vertex.erase()
+                    next_vertex = self.Vertices[self.Vertices.index(next_vertex)]
+                    if next_vertex.in_arrow:
+                        next_vertex.reverse_path()
+                    next_arrow.set_end(next_vertex)
+                    next_vertex.in_arrow = next_arrow
+                    if next_vertex.color != self.ActiveVertex.color:
+                        self.palette.recycle(self.ActiveVertex.color)
+                        next_vertex.recolor_incoming(color = next_vertex.color)
+                    self.update_crossings(next_arrow)
+                    next_arrow.expose(self.Crossings)
+                    self.goto_start_state()
                     return
-                next_vertex.erase()
-                next_vertex = self.Vertices[self.Vertices.index(next_vertex)]
-                if next_vertex.in_arrow:
-                    next_vertex.reverse_path()
-                next_arrow.set_end(next_vertex)
-                next_vertex.in_arrow = next_arrow
-                if next_vertex.color != self.ActiveVertex.color:
-                    self.palette.recycle(self.ActiveVertex.color)
-                    next_vertex.recolor_incoming(color = next_vertex.color)
-                self.update_crossings(next_arrow)
-                next_arrow.expose(self.Crossings)
-                self.goto_start_state()
-                return
-            #print 'just extending a path, as usual'
-            if not (self.generic_vertex(next_vertex) and
-                    self.generic_arrow(next_arrow) ):
-                self.alert()
-                self.destroy_arrow(next_arrow)
-                return
+                #print 'just extending a path, as usual'
+                if not (self.generic_vertex(next_vertex) and
+                        self.generic_arrow(next_arrow) ):
+                    print("not done yet")
+                    self.alert()
+                    self.destroy_arrow(next_arrow)
+                    return
+            else:
+                if next_vertex in [v for v in self.Vertices if v.is_endpoint()]:
+                    #print 'melding vertices'
+                    if not self.generic_arrow(next_arrow):
+                        self.alert()
+                        return
+                    next_vertex.erase()
+                    next_vertex = self.Vertices[self.Vertices.index(next_vertex)]
+                    if next_vertex.in_arrow:
+                        next_vertex.reverse_path()
+                    next_arrow.set_end(next_vertex)
+                    next_vertex.in_arrow = next_arrow
+                    if next_vertex.color != self.ActiveVertex.color:
+                        self.palette.recycle(self.ActiveVertex.color)
+                        next_vertex.recolor_incoming(color = next_vertex.color)
+                    self.update_crossings(next_arrow)
+                    next_arrow.expose(self.Crossings)
+                    self.goto_start_state()
+                    self.r3_helper_tuple = None
+                    return
+                #print 'just extending a path, as usual'
+                if not (self.generic_vertex(next_vertex) and
+                        self.generic_arrow(next_arrow) ):
+                    self.alert()
+                    self.destroy_arrow(next_arrow)
+                    return
             self.update_crossings(next_arrow)
             self.update_crosspoints()
             next_arrow.expose(self.Crossings)
@@ -1729,7 +1804,9 @@ class LinkEditor(PLinkBase):
         for arrow in self.Arrows:
             if this_arrow == arrow:
                 continue
-            if self.under_mode == False:
+            if self.r3_helper_tuple is not None and self.r3_helper_tuple[0]:
+                new_crossing = Crossing(arrow, this_arrow)
+            elif self.under_mode == False:
                 new_crossing = Crossing(this_arrow, arrow)
             else:
                 new_crossing = Crossing(arrow, this_arrow)
