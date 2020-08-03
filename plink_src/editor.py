@@ -585,6 +585,8 @@ class LinkEditor(PLinkBase):
         self.r2_mode = False
         self.r2_crossings = []
         self.r3_mode = False
+        self.r3_crossings = []
+        self.r3_helper_tuple = None
         self.modes = False
         self.modes_draw = []
         self.state='start_state'
@@ -998,6 +1000,29 @@ class LinkEditor(PLinkBase):
                 pass
         return (no_crossings_over, no_crossings_under)
 
+    def all_oriented(self, arrow):
+        """
+        returns boolean tuple (can_reduce, is_under)
+        """
+        no_crossings_over = True
+        no_crossings_under = True
+        cross_list_copy = self.Crossings
+        for crossing in cross_list_copy:
+            if arrow == crossing.under:
+                no_crossings_under = False
+            elif arrow == crossing.over:
+                no_crossings_over = False
+            else:
+                pass
+        if no_crossings_over and no_crossings_under: # no crossings at all
+            return (True, self.under_mode)
+        elif no_crossings_over and not no_crossings_under: # crossings are under
+            return (True, True)
+        elif not no_crossings_over and no_crossings_under: # crossings are over
+            return (True, False)
+        else:
+            return (False, None)
+
     def get_over_arrow_path_2(self, crossing_begin, crossing_end):
         arrow_path = [crossing_begin.over]
         while crossing_end.over not in arrow_path:
@@ -1031,6 +1056,7 @@ class LinkEditor(PLinkBase):
         o_list = o_list[begin_index_o:end_index_o + 1]
         u_list = u_list[begin_index_u:end_index_u + 1]
         return (no_crossings_over, no_crossings_under)
+<<<<<<< HEAD
     
     # def chirality(self, crossing):
     #     over_color = crossing.over.color
@@ -1170,6 +1196,72 @@ class LinkEditor(PLinkBase):
         # clean up messy components
         return
 
+=======
+
+    def chirality(self, crossing):
+        over_color = crossing.over.color
+        overs = []
+        over_sum = 0
+        over_chirality = False
+        under_color = crossing.under.color
+        unders = []
+        under_sum = 0
+        under_chirality = False
+        for arrow in self.Arrows:
+            if arrow.color == under_color:
+                unders.append(arrow)
+            if arrow.color == over_color:
+                overs.append(arrow)
+        for i in overs:
+            over_sum += (i.end.x - i.start.x) * (i.end.y + i.start.y)
+        for j in unders:
+            under_sum += (j.end.x - j.start.x) * (j.end.y + j.start.y)
+        if over_sum <= 0:
+            over_chirality = True
+        if under_sum <= 0:
+            under_chirality = True
+        return (over_chirality, under_chirality)
+>>>>>>> 74fc553c2d13f58275983cc3693319f9d922710b
+
+    def get_path_btwn_verts(self, v1, v2):
+        v2_found = False
+        path = [v1.out_arrow]
+        while not v2_found:
+            next_vert = path[-1].end
+            if next_vert == v2:
+                return path
+            else:
+                path.append(next_vert.out_arrow)
+        return path
+
+    def oriented_path(self, path):
+        can_reduce_all = True
+        default_orientation = None
+        for arrow in path:
+            orientation_output = self.all_oriented(arrow)
+            if orientation_output[0] == False:
+                return False
+            else:
+                if default_orientation is None:
+                    default_orientation = orientation_output[1]
+                elif default_orientation is not orientation_output[1]:
+                    return False
+                else:
+                    pass
+        return True
+
+    def get_vertex_set(self, path):
+        vert_set = set()
+        for i in range(len(path)):
+            arrow = path[i]
+            if i == 0:
+                vert_set.add(arrow.end)
+            elif i == (len(path)-1):
+                vert_set.add(arrow.start)
+            else:
+                vert_set.add(arrow.start)
+                vert_set.add(arrow.end)
+        return vert_set
 
     def single_click(self, event):
         """
@@ -1189,34 +1281,54 @@ class LinkEditor(PLinkBase):
         if self.state == 'start_state':
             if start_vertex in self.Vertices:
                 #print 'single click on a vertex'
-                self.state = 'dragging_state'
-                self.hide_DT()
-                self.hide_labels()
-                self.update_info()
-                self.canvas.config(cursor=closed_hand_cursor)
-                self.ActiveVertex = self.Vertices[
-                    self.Vertices.index(start_vertex)]
-                self.ActiveVertex.freeze()
-                self.saved_crossing_data = self.active_crossing_data()
-                x1, y1 = self.ActiveVertex.point()
-                if self.ActiveVertex.in_arrow is None and self.ActiveVertex.out_arrow is None:
-                    # If this is an isolated vertex (likely created
-                    # unintentionally), switch to drawing mode.
-                    self.double_click(event)
+                if self.r3_mode:
+                    self.r3_crossings.append(start_vertex)
+                    if len(self.r3_crossings) == 2:
+                        vert1 = self.Vertices[self.Vertices.index(self.r3_crossings[0])]
+                        vert2 = self.Vertices[self.Vertices.index(self.r3_crossings[1])]
+                        path = self.get_path_btwn_verts(vert1, vert2)
+                        is_oriented = self.oriented_path(path)
+                        if is_oriented:
+                            vert_set = self.get_vertex_set(path)
+                            for arrow in path:
+                                self.destroy_arrow(arrow)
+                            for vert in vert_set:
+                                vert.hide()
+                                self.Vertices.remove(vert)
+                            self.update_info()
+                            x1, y1 = vert1.point()
+                            self.ActiveVertex = vert1
+                            self.goto_drawing_state(x1, y1)
                     return
-                if self.ActiveVertex.in_arrow:
-                    x0, y0 = self.ActiveVertex.in_arrow.start.point()
-                    self.ActiveVertex.in_arrow.freeze()
-                    self.LiveArrow1 = self.canvas.create_line(x0, y0, x1, y1, fill='red')
-                if self.ActiveVertex.out_arrow:
-                    x0, y0 = self.ActiveVertex.out_arrow.end.point()
-                    self.ActiveVertex.out_arrow.freeze()
-                    self.LiveArrow2 = self.canvas.create_line(x0, y0, x1, y1, fill='red')
-                if self.ActiveVertex.in_arrow and self.ActiveVertex.out_arrow:
-                    x0, y0 = self.ActiveVertex.out_arrow.start.point()
-                    self.LiveArrow3 = self.canvas.create_line(x0, y0, x1, y1, fill='red', dash=(4, 4))
-                if self.lock_var.get():
-                    self.attach_cursor('start')
+                else:
+                    self.state = 'dragging_state'
+                    self.hide_DT()
+                    self.hide_labels()
+                    self.update_info()
+                    self.canvas.config(cursor=closed_hand_cursor)
+                    self.ActiveVertex = self.Vertices[
+                        self.Vertices.index(start_vertex)]
+                    self.ActiveVertex.freeze()
+                    self.saved_crossing_data = self.active_crossing_data()
+                    x1, y1 = self.ActiveVertex.point()
+                    if self.ActiveVertex.in_arrow is None and self.ActiveVertex.out_arrow is None:
+                        # If this is an isolated vertex (likely created
+                        # unintentionally), switch to drawing mode.
+                        self.double_click(event)
+                        return
+                    if self.ActiveVertex.in_arrow:
+                        x0, y0 = self.ActiveVertex.in_arrow.start.point()
+                        self.ActiveVertex.in_arrow.freeze()
+                        self.LiveArrow1 = self.canvas.create_line(x0, y0, x1, y1, fill='red')
+                    if self.ActiveVertex.out_arrow:
+                        x0, y0 = self.ActiveVertex.out_arrow.end.point()
+                        self.ActiveVertex.out_arrow.freeze()
+                        self.LiveArrow2 = self.canvas.create_line(x0, y0, x1, y1, fill='red')
+                    if self.ActiveVertex.in_arrow and self.ActiveVertex.out_arrow:
+                        x0, y0 = self.ActiveVertex.out_arrow.start.point()
+                        self.LiveArrow3 = self.canvas.create_line(x0, y0, x1, y1, fill='red', dash=(4, 4))
+                    if self.lock_var.get():
+                        self.attach_cursor('start')
                 return
             elif self.lock_var.get():
                 return
@@ -1295,12 +1407,6 @@ class LinkEditor(PLinkBase):
                     self.r2_crossings.append(start_vertex)
                     # self.r2_crossings.sort()
                     if len(self.r2_crossings) == 2:
-                        cross1 = self.Crossings[self.CrossPoints.index(self.r2_crossings[0])]
-                        cross2 = self.Crossings[self.CrossPoints.index(self.r2_crossings[1])]
-                        over_arrow_path_2 = self.get_over_arrow_path_2(cross1, cross2)
-                        under_arrow_path_2 = self.get_under_arrow_path_2(cross1, cross2)
-                        can_reduce_over, can_reduce_under = self.over_under_has_crossings_2(over_arrow_path_2, 
-                                    under_arrow_path_2, cross1, cross2)
                         if can_reduce_over or can_reduce_under:
                             segments1 = cross1.under.find_segments(self.Crossings)
                             handedness1 = self.crossing_hand(cross1)
@@ -1316,6 +1422,7 @@ class LinkEditor(PLinkBase):
                                     segments1[i-1][3] >= cross1.y >= segments1[i][1])):
                                     v1 = Vertex(segments1[i-1][2], segments1[i-1][3], self.canvas, style='hidden')
                                     v2 = Vertex(segments1[i][0], segments1[i][1], self.canvas, style='hidden')
+<<<<<<< HEAD
                                     v1.set_color(cross1.over.color)
                                     v2.set_color(cross1.under.color)
                                     if handedness1 == 1:
@@ -1332,6 +1439,9 @@ class LinkEditor(PLinkBase):
                             segments2 = cross2.under.find_segments(self.Crossings)
                             print(cross2)
                             handedness2 = self.crossing_hand(cross2)
+=======
+
+>>>>>>> 74fc553c2d13f58275983cc3693319f9d922710b
                             for i in range(1, len(segments2)):
                                 if ((segments2[i-1][2] <= cross2.x <= segments2[i][0] or
                                     segments2[i-1][3] <= cross2.y <= segments2[i][1]) or
@@ -1349,6 +1459,7 @@ class LinkEditor(PLinkBase):
                                         # end_inner = v2
                                     else:
                                         print(4)
+<<<<<<< HEAD
                                         self.r2_helper_neg(cross2, v1, v2, 2)
                                         break
                                         # end_inner = v2
@@ -1358,6 +1469,45 @@ class LinkEditor(PLinkBase):
                             # self.update_crossings(arr)
                             # self.update_crosspoints()
                             # arr.expose() 
+=======
+                                        cross2.over.start.color = cross2.under.color
+                                        arrow1 = Arrow(v1, cross2.over.start, self.canvas, color = cross2.under.color)
+                                        arrow2 = Arrow(v2, cross2.over.end, self.canvas, color = cross2.over.color)
+                                        arrow3 = Arrow(cross2.under.start, v1, self.canvas, color = cross2.under.color)
+                                        #     self.Vertices.append(new_v)
+                                        self.Vertices.append(v1)
+                                        self.Vertices.append(v2)
+                                        #     new_v.expose()
+                                        v1.expose()
+                                        v2.expose()
+                                        cross2.over.start.expose()
+                                        #     self.Arrows.insert(n + count - 1, arrow1)
+                                        self.Arrows.append(arrow1)
+                                        self.update_crossings(arrow1)
+                                        self.update_crosspoints()
+                                        arrow1.expose()
+                                        self.Arrows.append(arrow2)
+                                        self.update_crossings(arrow2)
+                                        self.update_crosspoints()
+                                        arrow2.expose()
+                                        self.Arrows.append(arrow3)
+                                        self.update_crossings(arrow3)
+                                        self.update_crosspoints()
+                                        arrow3.expose()
+                                        arrow1.start.out_arrow = arrow1
+                                        arrow2.start.out_arrow = arrow2
+                                        arrow3.start.out_arrow = arrow3
+                                        arrow1.end.in_arrow = arrow1
+                                        arrow2.end.in_arrow = arrow2
+                                        arrow3.end.in_arrow = arrow3
+                                        end_inner = v2
+
+                            arr = Arrow(start_inner, end_inner, self.canvas, color = cross1.over.color)
+                            self.Arrows.append(arr)
+                            self.update_crossings(arr)
+                            self.update_crosspoints()
+                            arr.expose()
+>>>>>>> 74fc553c2d13f58275983cc3693319f9d922710b
                             # delete arrows
                             self.Arrows.remove(cross1.over)
                             cross1.over.erase()
@@ -1399,6 +1549,7 @@ class LinkEditor(PLinkBase):
                 if self.vertex_mode:
                     new_vert = start_vertex
                     selected_arrow = None
+                    print(self.Crossings)
                     for arrow in self.Arrows:
                         if arrow.too_close(start_vertex):
                             selected_arrow = arrow
@@ -1411,14 +1562,18 @@ class LinkEditor(PLinkBase):
                                             style='hidden', color = this_color)
                     arrow2 = Arrow(new_vert, end, self.canvas,
                                             style='hidden', color = this_color)
-                    new_vert.set_color(arrow2.color)
                     self.Vertices.append(new_vert)
                     self.Arrows.append(arrow1)
                     self.Arrows.append(arrow2)
-                    start_vertex.expose()
-                    arrow1.expose()
-                    arrow2.expose()
+                    potential_crossing = Crossing
+                    self.update_crossings(arrow1)
+                    self.update_crossings(arrow2)
+                    print(self.Crossings)
+                    self.update_crosspoints()
                     self.update_info()
+                    new_vert.set_color(arrow2.color)
+                    start_vertex.expose()
+                    print(self.Crossings)
                 else:
                     for arrow in self.Arrows:
                         if arrow.too_close(start_vertex):
@@ -1440,8 +1595,10 @@ class LinkEditor(PLinkBase):
             self.goto_drawing_state(x1,y1)
             return
         elif self.state == 'drawing_state':
+            print("Am in drawing state", self.Crossings)
             next_vertex = Vertex(x, y, self.canvas, style='hidden')
             if next_vertex == self.ActiveVertex:
+                print("clicked same vertex twice")
                 #print 'clicked the same vertex twice'
                 next_vertex.erase()
                 dead_arrow = self.ActiveVertex.out_arrow
@@ -1451,44 +1608,83 @@ class LinkEditor(PLinkBase):
                 return
             #print 'setting up a new arrow'
             if self.ActiveVertex.out_arrow:
+                print("Setting up new arrow")
                 next_arrow = self.ActiveVertex.out_arrow
                 next_arrow.set_end(next_vertex)
                 next_vertex.in_arrow = next_arrow
                 if not next_arrow.frozen:
                     next_arrow.hide()
             else:
+                print("Not sure what this does", self.Crossings)
                 this_color = self.ActiveVertex.color
                 next_arrow = Arrow(self.ActiveVertex, next_vertex,
                                  self.canvas, style='hidden',
                                  color=this_color)
                 self.Arrows.append(next_arrow)
             next_vertex.set_color(next_arrow.color)
-            if next_vertex in [v for v in self.Vertices if v.is_endpoint()]:
-                #print 'melding vertices'
-                if not self.generic_arrow(next_arrow):
-                    self.alert()
+            if self.r3_mode:
+                if next_vertex == self.r3_crossings[1]:
+                    print("finished")
+                    #print 'melding vertices'
+                    if not self.generic_arrow(next_arrow):
+                        self.alert()
+                        return
+                    next_vertex.erase()
+                    next_vertex = self.Vertices[self.Vertices.index(next_vertex)]
+                    if next_vertex.in_arrow:
+                        next_vertex.reverse_path()
+                    next_arrow.set_end(next_vertex)
+                    next_vertex.in_arrow = next_arrow
+                    if next_vertex.color != self.ActiveVertex.color:
+                        self.palette.recycle(self.ActiveVertex.color)
+                        next_vertex.recolor_incoming(color = next_vertex.color)
+                    self.update_crossings(next_arrow)
+                    next_arrow.expose(self.Crossings)
+                    self.r3_crossings = []
+                    self.goto_start_state()
                     return
-                next_vertex.erase()
-                next_vertex = self.Vertices[self.Vertices.index(next_vertex)]
-                if next_vertex.in_arrow:
-                    next_vertex.reverse_path()
-                next_arrow.set_end(next_vertex)
-                next_vertex.in_arrow = next_arrow
-                if next_vertex.color != self.ActiveVertex.color:
-                    self.palette.recycle(self.ActiveVertex.color)
-                    next_vertex.recolor_incoming(color = next_vertex.color)
-                self.update_crossings(next_arrow)
-                next_arrow.expose(self.Crossings)
-                self.goto_start_state()
-                return
-            #print 'just extending a path, as usual'
-            if not (self.generic_vertex(next_vertex) and
-                    self.generic_arrow(next_arrow) ):
-                self.alert()
-                self.destroy_arrow(next_arrow)
-                return
+                #print 'just extending a path, as usual'
+                if not (self.generic_vertex(next_vertex) and
+                        self.generic_arrow(next_arrow) ):
+                    print("not done yet")
+                    self.alert()
+                    self.destroy_arrow(next_arrow)
+                    return
+            else:
+                print("Not r3 hehe", self.Crossings)
+                if next_vertex in [v for v in self.Vertices if v.is_endpoint()]:
+                    print("melding vertices")
+                    #print 'melding vertices'
+                    if not self.generic_arrow(next_arrow):
+                        self.alert()
+                        return
+                    next_vertex.erase()
+                    next_vertex = self.Vertices[self.Vertices.index(next_vertex)]
+                    if next_vertex.in_arrow:
+                        next_vertex.reverse_path()
+                    next_arrow.set_end(next_vertex)
+                    next_vertex.in_arrow = next_arrow
+                    if next_vertex.color != self.ActiveVertex.color:
+                        self.palette.recycle(self.ActiveVertex.color)
+                        next_vertex.recolor_incoming(color = next_vertex.color)
+                    self.update_crossings(next_arrow)
+                    next_arrow.expose(self.Crossings)
+                    self.goto_start_state()
+                    self.r3_helper_tuple = None
+                    return
+                #print 'just extending a path, as usual'
+                print("just extending path", self.Crossings)
+                if not (self.generic_vertex(next_vertex) and
+                        self.generic_arrow(next_arrow) ):
+                    print("do we ever hit this")
+                    self.alert()
+                    self.destroy_arrow(next_arrow)
+                    return
+            print("Hit 1", self.Crossings)
             self.update_crossings(next_arrow)
+            print("Hit 2", self.Crossings)
             self.update_crosspoints()
+            print("Hit 3", self.Crossings)
             next_arrow.expose(self.Crossings)
             self.Vertices.append(next_vertex)
             next_vertex.expose()
@@ -1883,7 +2079,9 @@ class LinkEditor(PLinkBase):
         for arrow in self.Arrows:
             if this_arrow == arrow:
                 continue
-            if self.under_mode == False:
+            if self.r3_helper_tuple is not None and self.r3_helper_tuple[0]:
+                new_crossing = Crossing(arrow, this_arrow)
+            elif self.under_mode == False:
                 new_crossing = Crossing(this_arrow, arrow)
             else:
                 new_crossing = Crossing(arrow, this_arrow)
