@@ -162,6 +162,7 @@ class Arrow:
     
     def crossings_list(self, crossings):
         c_list = []
+        self.vectorize()
         for c in crossings:
             if c.under == self or c.over == self:
                 c_list.append(c)
