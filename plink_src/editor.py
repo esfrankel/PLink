@@ -1144,7 +1144,6 @@ class LinkEditor(PLinkBase):
         self.update_crossings(crossing.under)
         self.update_crosspoints()
         crossing.under.expose(self.Crossings)
-
         self.update_info()
         return
 
@@ -1163,10 +1162,13 @@ class LinkEditor(PLinkBase):
 
     def r2_rev_1(self, start, end):
         cur_color = start.color
-        start.out_arrow.reverse(self.Crossings)
-        start.out_arrow.set_color(cur_color)
-        start.out_arrow.end.set_color(cur_color)
-        start = start.out_arrow.end
+        if start != end:
+            start.out_arrow.reverse(self.Crossings)
+            start.out_arrow.set_color(cur_color)
+            start.out_arrow.end.set_color(cur_color)
+            start = start.out_arrow.end
+        else:
+            start.reverse()
         while start != end:
             start.reverse()
             start.out_arrow.reverse(self.Crossings)
@@ -1176,10 +1178,13 @@ class LinkEditor(PLinkBase):
 
     def r2_rev_2(self, start, end):
         cur_color = start.color
-        start.in_arrow.reverse(self.Crossings)
-        start.in_arrow.set_color(cur_color)
-        start.in_arrow.end.set_color(cur_color)
-        start = start.in_arrow.start
+        if start != end:
+            start.in_arrow.reverse(self.Crossings)
+            start.in_arrow.set_color(cur_color)
+            start.in_arrow.end.set_color(cur_color)
+            start = start.in_arrow.start
+        else:
+            start.reverse()
         while start != end:
             start.reverse()
             start.in_arrow.reverse(self.Crossings)
