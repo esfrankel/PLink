@@ -1065,12 +1065,15 @@ class LinkEditor(PLinkBase):
         else:
             return -1
 
-    def r2_helper_pos(self, crossing, v1, v2):
+    def r2_helper_pos(self, crossing, v1, v2, case, simple_case_over, simple_case_under):
         to_rev = crossing.over.end.out_arrow # to reverse
         crossing.over.end.color = crossing.under.color
         arrow1 = Arrow(crossing.over.start, v1, self.canvas, color = crossing.over.color)
         arrow2 = Arrow(crossing.over.end, v2, self.canvas, color = crossing.under.color)
-        arrow3 = Arrow(v2, crossing.under.end, self.canvas, color = crossing.under.color)
+        if simple_case_under == False or case == 1:
+            arrow3 = Arrow(v2, crossing.under.end, self.canvas, color = crossing.under.color)
+        else:
+            arrow3 = Arrow(crossing.under.start, v1, self.canvas, color = crossing.under.color)
         #     self.Vertices.append(new_v)
         self.Vertices.append(v1)
         self.Vertices.append(v2)
@@ -1091,27 +1094,40 @@ class LinkEditor(PLinkBase):
         self.update_crossings(arrow3)
         self.update_crosspoints()
         arrow3.expose()
+
         arrow1.start.out_arrow = arrow1
         arrow2.start.out_arrow = arrow2
         arrow3.start.out_arrow = arrow3
         arrow1.end.in_arrow = arrow1
         arrow2.end.in_arrow = arrow2
-        arrow3.end.in_arrow = arrow3
-        crossing.under.end = v1
-        v1.out_arrow = crossing.under
-        crossing.over.end.in_arrow = to_rev
+        if simple_case_under == False or case == 1:
+            arrow3.end.in_arrow = arrow3
+        else:
+            arrow3.end.out_arrow = arrow3
+            
+        if simple_case_under == False or case == 1:
+            crossing.under.set_end(v1)
+            v1.out_arrow = crossing.under
+        else:
+            crossing.under.set_start(v2)
+            v2.out_arrow = crossing.under
+        if simple_case_over == False:
+            crossing.over.end.in_arrow = to_rev
         self.update_crossings(crossing.under)
         self.update_crosspoints()
         crossing.under.expose(self.Crossings)
         self.update_info()
         return
     
-    def r2_helper_neg(self, crossing, v1, v2):
+    def r2_helper_neg(self, crossing, v1, v2, case, simple_case_over, simple_case_under):
         to_rev = crossing.over.start.in_arrow # to reverse
         crossing.over.start.color = crossing.under.color
         arrow1 = Arrow(v1, crossing.over.start, self.canvas, color = crossing.under.color)
         arrow2 = Arrow(v2, crossing.over.end, self.canvas, color = crossing.over.color)
-        arrow3 = Arrow(crossing.under.start, v1, self.canvas, color = crossing.under.color)
+        if simple_case_under == False or case == 1:
+            arrow3 = Arrow(crossing.under.start, v1, self.canvas, color = crossing.under.color)
+        else:
+            arrow3 = Arrow(v2, crossing.under.end, self.canvas, color = crossing.under.color)
         #     self.Vertices.append(new_v)
         self.Vertices.append(v1)
         self.Vertices.append(v2)
@@ -1134,13 +1150,23 @@ class LinkEditor(PLinkBase):
         arrow3.expose()
         arrow1.start.out_arrow = arrow1
         arrow2.start.out_arrow = arrow2
-        arrow3.start.out_arrow = arrow3
+
+        if simple_case_under == False or case == 1:
+            arrow3.start.out_arrow = arrow3
+        else:
+            arrow3.start.in_arrow = arrow3
         arrow1.end.in_arrow = arrow1
         arrow2.end.in_arrow = arrow2
         arrow3.end.in_arrow = arrow3
-        crossing.under.set_start(v2)
-        v2.in_arrow = crossing.under
-        crossing.over.start.out_arrow = to_rev
+
+        if simple_case_under == False or case == 1:
+            crossing.under.set_start(v2)
+            v2.in_arrow = crossing.under
+        else:
+            crossing.under.set_end(v1)
+            v1.in_arrow = crossing.under
+        if simple_case_over == False:
+            crossing.over.start.out_arrow = to_rev
         self.update_crossings(crossing.under)
         self.update_crosspoints()
         crossing.under.expose(self.Crossings)
@@ -1330,14 +1356,28 @@ class LinkEditor(PLinkBase):
                         over_start = cross2.over.start
                         over_end = cross2.over.end
                         case = 1
-                        if can_reduce_over or can_reduce_under or cross1 != cross2:
+                        # if can_reduce_under == True and can_reduce_over == False:
+                        #     cross1.reverse()
+                        #     cross2.reverse()
+                        if can_reduce_over == True or can_reduce_under == True or cross1 != cross2:
                             segments1 = cross1.under.find_segments(self.Crossings)
                             handedness1 = self.crossing_hand(cross1)
+                            segments2 = cross2.under.find_segments(self.Crossings)
+                            handedness2 = self.crossing_hand(cross2)
                             # clean code for handedness heuristic
                             # start_v = cross1.under.start
                             # end_v = cross2.under.end
                             # start_inner = cross1.under.start
                             # end_inner = cross1.under.start
+
+                            simple_case_over = False
+                            simple_case_under = False
+                            if cross1.over.end == cross2.over.start or cross2.over.end == cross1.over.start:
+                                simple_case_over = True
+                            if cross1.under.end == cross2.under.end:
+                                simple_case_under = True
+                            print(simple_case_over, simple_case_under)
+
                             for i in range(1, len(segments1)):
                                 if ((segments1[i-1][2] <= cross1.x <= segments1[i][0] or
                                     segments1[i-1][3] <= cross1.y <= segments1[i][1]) or
@@ -1349,7 +1389,7 @@ class LinkEditor(PLinkBase):
                                         print(1)
                                         v1.set_color(cross1.over.color)
                                         v2.set_color(cross1.under.color)
-                                        self.r2_helper_pos(cross1, v1, v2)
+                                        self.r2_helper_pos(cross1, v1, v2, 1, simple_case_over, simple_case_under)
                                         under_start = v1
                                         over_start = cross1.over.end
                                         break
@@ -1358,15 +1398,13 @@ class LinkEditor(PLinkBase):
                                         print(2)
                                         v1.set_color(cross1.under.color)
                                         v2.set_color(cross1.over.color)
-                                        self.r2_helper_neg(cross1, v1, v2)
+                                        self.r2_helper_neg(cross1, v1, v2, 2, simple_case_over, simple_case_under)
                                         under_start = v2
                                         over_start = cross1.over.start
                                         case = 2
                                         break
                                         # start_inner = v1
 
-                            segments2 = cross2.under.find_segments(self.Crossings)
-                            handedness2 = self.crossing_hand(cross2)
                             for i in range(1, len(segments2)):
                                 if ((segments2[i-1][2] <= cross2.x <= segments2[i][0] or
                                     segments2[i-1][3] <= cross2.y <= segments2[i][1]) or
@@ -1374,11 +1412,12 @@ class LinkEditor(PLinkBase):
                                     segments2[i-1][3] >= cross2.y >= segments2[i][1])):
                                     v1 = Vertex(segments2[i-1][2], segments2[i-1][3], self.canvas, style='hidden')
                                     v2 = Vertex(segments2[i][0], segments2[i][1], self.canvas, style='hidden')
+
                                     if handedness2 == 1:
                                         print(3)
                                         v1.set_color(cross2.over.color)
                                         v2.set_color(cross2.under.color)
-                                        self.r2_helper_pos(cross2, v1, v2)
+                                        self.r2_helper_pos(cross2, v1, v2, 2, simple_case_over, simple_case_under)
                                         under_end = v1
                                         over_end = cross2.over.end
                                         case = 2
@@ -1388,7 +1427,7 @@ class LinkEditor(PLinkBase):
                                         print(4)
                                         v1.set_color(cross2.under.color)
                                         v2.set_color(cross2.over.color)
-                                        self.r2_helper_neg(cross2, v1, v2)
+                                        self.r2_helper_neg(cross2, v1, v2, 1, simple_case_over, simple_case_under)
                                         under_end = v2
                                         over_end = cross2.over.start
                                         break
@@ -1402,12 +1441,12 @@ class LinkEditor(PLinkBase):
 
                             if case == 1:
                                 self.r2_rev_1(under_start, under_end)
-                                self.r2_rev_2(over_start, over_end)
-
+                                if simple_case_over == False:
+                                    self.r2_rev_2(over_start, over_end)
                             else:
                                 self.r2_rev_2(under_start, under_end)
-                                self.r2_rev_1(over_start, over_end)
-
+                                if simple_case_over == False:
+                                    self.r2_rev_1(over_start, over_end)
                             self.Arrows.remove(cross1.over)
                             cross1.over.erase()
                             self.Crossings = [c for c in self.Crossings if cross1.over not in c]
