@@ -1056,8 +1056,7 @@ class LinkEditor(PLinkBase):
         o_list = o_list[begin_index_o:end_index_o + 1]
         u_list = u_list[begin_index_u:end_index_u + 1]
         return (no_crossings_over, no_crossings_under)
-<<<<<<< HEAD
-    
+
     # def chirality(self, crossing):
     #     over_color = crossing.over.color
     #     overs = []
@@ -1081,7 +1080,7 @@ class LinkEditor(PLinkBase):
     #     if under_sum <= 0:
     #         under_chirality = True
     #     return (over_chirality, under_chirality)
-    
+
     def crossing_hand(self, crossing):
         sum = ((crossing.over.end.x - crossing.x) * (crossing.over.end.y + crossing.y) +
                 (crossing.under.end.x - crossing.over.end.x) * (crossing.under.end.y + crossing.over.end.y) +
@@ -1136,7 +1135,7 @@ class LinkEditor(PLinkBase):
         crossing.under.expose(self.Crossings)
         self.update_info()
         return
-    
+
     def r2_helper_neg(self, crossing, v1, v2, case):
         print(crossing.under.vectorize())
         crossing.over.start.color = crossing.under.color
@@ -1196,7 +1195,6 @@ class LinkEditor(PLinkBase):
         # clean up messy components
         return
 
-=======
 
     def chirality(self, crossing):
         over_color = crossing.over.color
@@ -1221,7 +1219,6 @@ class LinkEditor(PLinkBase):
         if under_sum <= 0:
             under_chirality = True
         return (over_chirality, under_chirality)
->>>>>>> 74fc553c2d13f58275983cc3693319f9d922710b
 
     def get_path_btwn_verts(self, v1, v2):
         v2_found = False
@@ -1422,7 +1419,6 @@ class LinkEditor(PLinkBase):
                                     segments1[i-1][3] >= cross1.y >= segments1[i][1])):
                                     v1 = Vertex(segments1[i-1][2], segments1[i-1][3], self.canvas, style='hidden')
                                     v2 = Vertex(segments1[i][0], segments1[i][1], self.canvas, style='hidden')
-<<<<<<< HEAD
                                     v1.set_color(cross1.over.color)
                                     v2.set_color(cross1.under.color)
                                     if handedness1 == 1:
@@ -1439,9 +1435,7 @@ class LinkEditor(PLinkBase):
                             segments2 = cross2.under.find_segments(self.Crossings)
                             print(cross2)
                             handedness2 = self.crossing_hand(cross2)
-=======
 
->>>>>>> 74fc553c2d13f58275983cc3693319f9d922710b
                             for i in range(1, len(segments2)):
                                 if ((segments2[i-1][2] <= cross2.x <= segments2[i][0] or
                                     segments2[i-1][3] <= cross2.y <= segments2[i][1]) or
@@ -1459,17 +1453,15 @@ class LinkEditor(PLinkBase):
                                         # end_inner = v2
                                     else:
                                         print(4)
-<<<<<<< HEAD
                                         self.r2_helper_neg(cross2, v1, v2, 2)
                                         break
                                         # end_inner = v2
-                            
+
                             # arr = Arrow(start_inner, end_inner, self.canvas, color = cross1.over.color)
                             # self.Arrows.append(arr)
                             # self.update_crossings(arr)
                             # self.update_crosspoints()
-                            # arr.expose() 
-=======
+                            # arr.expose()
                                         cross2.over.start.color = cross2.under.color
                                         arrow1 = Arrow(v1, cross2.over.start, self.canvas, color = cross2.under.color)
                                         arrow2 = Arrow(v2, cross2.over.end, self.canvas, color = cross2.over.color)
@@ -1507,7 +1499,6 @@ class LinkEditor(PLinkBase):
                             self.update_crossings(arr)
                             self.update_crosspoints()
                             arr.expose()
->>>>>>> 74fc553c2d13f58275983cc3693319f9d922710b
                             # delete arrows
                             self.Arrows.remove(cross1.over)
                             cross1.over.erase()
