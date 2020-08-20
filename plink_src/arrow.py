@@ -42,6 +42,7 @@ class Arrow:
         self.lines = []
         self.dots = []
         self.cross_params = []
+        self.height = 1
         if other_params is None:
             other_params = default_arrow_params.copy()
         self.params = other_params
@@ -162,6 +163,7 @@ class Arrow:
     
     def crossings_list(self, crossings):
         c_list = []
+        self.vectorize()
         for c in crossings:
             if c.under == self or c.over == self:
                 c_list.append(c)
@@ -243,6 +245,9 @@ class Arrow:
         self.color = color
         for line in self.lines:
             self.canvas.itemconfig(line, fill=color)
+    
+    def set_height(self, height):
+        self.color = height
             
     def erase(self):
         """

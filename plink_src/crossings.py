@@ -34,6 +34,7 @@ class Crossing:
         self.is_virtual = is_virtual
         self.locate()
         self.label = label
+        self.cross_height = 1
 
     def __repr__(self):
         self.locate()
@@ -72,6 +73,9 @@ class Crossing:
             #print 'Crossing.locate failed'
             #print 'over = %s, under = %s'%(self.over, self.under)
             self.x = self.y = None
+    
+    def set_height(self, height):
+        self.color = height
 
     def sign(self):
         try:
