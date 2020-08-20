@@ -1011,212 +1011,149 @@ class LinkEditor(PLinkBase):
             most_recent = arrow_path[-1]
             arrow_path.append(most_recent.end.out_arrow)
         return arrow_path
+    
+    def chirality(self, crossing):
+        over_color = crossing.over.color
+        overs = []
+        over_sum = 0
+        over_chirality = False
+        under_color = crossing.under.color
+        unders = []
+        under_sum = 0
+        under_chirality = False
+        for arrow in self.Arrows:
+            if arrow.color == under_color:
+                unders.append(arrow)
+            if arrow.color == over_color:
+                overs.append(arrow)
+        for i in overs:
+            over_sum += (i.end.x - i.start.x) * (i.end.y + i.start.y)
+        for j in unders:
+            under_sum += (j.end.x - j.start.x) * (j.end.y + j.start.y)
+        if over_sum <= 0:
+            over_chirality = True
+        if under_sum <= 0:
+            under_chirality = True
+        return (over_chirality, under_chirality)
+    
+    def check_obstructions_r2(self, cross1, cross2):
+        output = [True, True, True, True]
+        # get strands
+        over1 = self.get_over_arrow_path_2(cross1, cross2)
+        under1 = self.get_under_arrow_path_2(cross1, cross2)
+        over2 = self.get_over_arrow_path_2(cross2, cross1)
+        under2 = self.get_under_arrow_path_2(cross2, cross1)
+        strands = [over1, under1, over2, under2]
+        for i in range(2):
+            start = strands[i].pop(0)
+            end = strands[i].pop(len(strands[i]) - 1)
+            start_crossings = start.crossings_list(self.Crossings)
+            end_crossings = end.crossings_list(self.Crossings)
+            start_index = start_crossings.index(cross1)
+            end_index = end_crossings.index(cross2)
+            if start_crossings[start_index:] != [cross1] or end_crossings[:end_index] != []:
+                output[i] = False
+            for edge in strands[i]:
+                obstructions = edge.crossings_list(self.Crossings)
+                if obstructions != []:
+                    output[i] = False
+        for i in range(2, 4):
+            start = strands[i].pop(0)
+            end = strands[i].pop(len(strands[i]) - 1)
+            start_crossings = start.crossings_list(self.Crossings)
+            end_crossings = end.crossings_list(self.Crossings)
+            start_index = start_crossings.index(cross2)
+            end_index = end_crossings.index(cross1)
+            if start_crossings[start_index:] != [cross2] or end_crossings[:end_index] != []:
+                output[i] = False
+            for edge in strands[i]:
+                obstructions = edge.crossings_list(self.Crossings)
+                if obstructions != []:
+                    output[i] = False
+        return output
 
-    def over_under_has_crossings_2(self, over_arrow_path, under_arrow_path, crossing_begin, crossing_end):
-        no_crossings_over = True
-        no_crossings_under = True
-        cross_list_copy = self.Crossings.copy()
-        o_list = []
-        u_list = []
-        # over case
-        for o_arrow in over_arrow_path:
-            o_list.extend(o_arrow.crossings_list(cross_list_copy))
-        # under case
-        for u_arrow in under_arrow_path:
-            u_list.extend(u_arrow.crossings_list(cross_list_copy))
-        begin_index_o = o_list.index(crossing_begin)
-        begin_index_u = u_list.index(crossing_begin)
-        end_index_o = o_list.index(crossing_end)
-        end_index_u = u_list.index(crossing_end)
-        o_list = o_list[begin_index_o:end_index_o + 1]
-        u_list = u_list[begin_index_u:end_index_u + 1]
-        return (no_crossings_over, no_crossings_under)
-    
-    # def chirality(self, crossing):
-    #     over_color = crossing.over.color
-    #     overs = []
-    #     over_sum = 0
-    #     over_chirality = False
-    #     under_color = crossing.under.color
-    #     unders = []
-    #     under_sum = 0
-    #     under_chirality = False
-    #     for arrow in self.Arrows:
-    #         if arrow.color == under_color:
-    #             unders.append(arrow)
-    #         if arrow.color == over_color:
-    #             overs.append(arrow)
-    #     for i in overs:
-    #         over_sum += (i.end.x - i.start.x) * (i.end.y + i.start.y)
-    #     for j in unders:
-    #         under_sum += (j.end.x - j.start.x) * (j.end.y + j.start.y)
-    #     if over_sum <= 0:
-    #         over_chirality = True
-    #     if under_sum <= 0:
-    #         under_chirality = True
-    #     return (over_chirality, under_chirality)
-    
-    def crossing_hand(self, crossing):
-        sum = ((crossing.over.end.x - crossing.x) * (crossing.over.end.y + crossing.y) +
-                (crossing.under.end.x - crossing.over.end.x) * (crossing.under.end.y + crossing.over.end.y) +
-                (crossing.x - crossing.under.end.x) * (crossing.y + crossing.under.end.y))
-        if sum > 0:
+    def possible_r2_move(self, obstructions):
+        if obstructions[0] == True and obstructions[1] == True:
             return 1
+        elif obstructions[1] == True and obstructions[2] == True:
+            return 2
+        elif obstructions[2] == True and obstructions[3] == True:
+            return 3
+        elif obstructions[0] == True and obstructions[3] == True:
+            return 4
         else:
-            return -1
-
-    def r2_helper_pos(self, crossing, v1, v2, case, simple_case_over, simple_case_under):
-        to_rev = crossing.over.end.out_arrow # to reverse
-        crossing.over.end.color = crossing.under.color
-        arrow1 = Arrow(crossing.over.start, v1, self.canvas, color = crossing.over.color)
-        arrow2 = Arrow(crossing.over.end, v2, self.canvas, color = crossing.under.color)
-        if simple_case_under == False or case == 1:
-            arrow3 = Arrow(v2, crossing.under.end, self.canvas, color = crossing.under.color)
-        else:
-            arrow3 = Arrow(crossing.under.start, v1, self.canvas, color = crossing.under.color)
-        #     self.Vertices.append(new_v)
-        self.Vertices.append(v1)
-        self.Vertices.append(v2)
-        #     new_v.expose()
-        v1.expose()
-        v2.expose()
-        crossing.over.end.expose()
-        #     self.Arrows.insert(n + count - 1, arrow1)
-        self.Arrows.append(arrow1)
-        self.update_crossings(arrow1)
-        self.update_crosspoints()
-        arrow1.expose()
-        self.Arrows.append(arrow2)
-        self.update_crossings(arrow2)
-        self.update_crosspoints()
-        arrow2.expose()
-        self.Arrows.append(arrow3)
-        self.update_crossings(arrow3)
-        self.update_crosspoints()
-        arrow3.expose()
-
-        arrow1.start.out_arrow = arrow1
-        arrow2.start.out_arrow = arrow2
-        arrow3.start.out_arrow = arrow3
-        arrow1.end.in_arrow = arrow1
-        arrow2.end.in_arrow = arrow2
-        if simple_case_under == False or case == 1:
-            arrow3.end.in_arrow = arrow3
-        else:
-            arrow3.end.out_arrow = arrow3
-            
-        if simple_case_under == False or case == 1:
-            crossing.under.set_end(v1)
-            v1.out_arrow = crossing.under
-        else:
-            crossing.under.set_start(v2)
-            v2.out_arrow = crossing.under
-        if simple_case_over == False:
-            crossing.over.end.in_arrow = to_rev
-        self.update_crossings(crossing.under)
-        self.update_crosspoints()
-        crossing.under.expose(self.Crossings)
-        self.update_info()
-        return
+            return 0
     
-    def r2_helper_neg(self, crossing, v1, v2, case, simple_case_over, simple_case_under):
-        to_rev = crossing.over.start.in_arrow # to reverse
-        crossing.over.start.color = crossing.under.color
-        arrow1 = Arrow(v1, crossing.over.start, self.canvas, color = crossing.under.color)
-        arrow2 = Arrow(v2, crossing.over.end, self.canvas, color = crossing.over.color)
-        if simple_case_under == False or case == 1:
-            arrow3 = Arrow(crossing.under.start, v1, self.canvas, color = crossing.under.color)
-        else:
-            arrow3 = Arrow(v2, crossing.under.end, self.canvas, color = crossing.under.color)
-        #     self.Vertices.append(new_v)
+    # perform r2 here
+    # need a helper funciton for reversing
+    def r2_1(self, crossing, v1, v2):
+        new_over_arrow = Arrow(v1, crossing.over.end, self.canvas, color = crossing.over.color)
+        crossing.over.set_end(v2)
+        v2.in_arrow = crossing.over
+        new_under_arrow = Arrow(v2, crossing.under.end, self.canvas, color = crossing.under.color)
+        crossing.under.set_end(v1)
+        v1.in_arrow = crossing.under
+
         self.Vertices.append(v1)
         self.Vertices.append(v2)
-        #     new_v.expose()
         v1.expose()
         v2.expose()
-        crossing.over.start.expose()
-        #     self.Arrows.insert(n + count - 1, arrow1)
-        self.Arrows.append(arrow1)
-        self.update_crossings(arrow1)
-        self.update_crosspoints()
-        arrow1.expose()
-        self.Arrows.append(arrow2)
-        self.update_crossings(arrow2)
-        self.update_crosspoints()
-        arrow2.expose()
-        self.Arrows.append(arrow3)
-        self.update_crossings(arrow3)
-        self.update_crosspoints()
-        arrow3.expose()
-        arrow1.start.out_arrow = arrow1
-        arrow2.start.out_arrow = arrow2
 
-        if simple_case_under == False or case == 1:
-            arrow3.start.out_arrow = arrow3
-        else:
-            arrow3.start.in_arrow = arrow3
-        arrow1.end.in_arrow = arrow1
-        arrow2.end.in_arrow = arrow2
-        arrow3.end.in_arrow = arrow3
-
-        if simple_case_under == False or case == 1:
-            crossing.under.set_start(v2)
-            v2.in_arrow = crossing.under
-        else:
-            crossing.under.set_end(v1)
-            v1.in_arrow = crossing.under
-        if simple_case_over == False:
-            crossing.over.start.out_arrow = to_rev
-        self.update_crossings(crossing.under)
+        self.Arrows.append(new_over_arrow)
+        self.update_crossings(new_over_arrow)
         self.update_crosspoints()
-        crossing.under.expose(self.Crossings)
+        new_over_arrow.expose()
+        self.Arrows.append(new_under_arrow)
+        self.update_crossings(new_under_arrow)
+        self.update_crosspoints()
+        new_under_arrow.expose()
+
+        new_over_arrow.end.in_arrow = new_over_arrow
+        new_over_arrow.start.out_arrow = new_over_arrow
+        new_under_arrow.end.in_arrow = new_under_arrow
+        new_under_arrow.start.out_arrow = new_under_arrow
         self.update_info()
         return
 
-    def r2_sort(self, cross1, cross2):
-        c_list = [cross1, cross2]
-        if cross1.under == cross2.under:
-            if cross1.under.end.x - cross1.under.start.x > 0:
-                c_list.sort(key=lambda c: c.x, reverse=True)
-            elif cross1.under.end.x - cross1.under.start.x < 0:
-                c_list.sort(key=lambda c: c.x)
-            elif cross1.under.start.y - cross1.under.end.y > 0:
-                c_list.sort(key=lambda c: c.y, reverse=True)
-            else:
-                c_list.sort(key=lambda c: c.y)
-        return c_list
+    def r2_2(self, crossing, v1, v2):
+        new_over_arrow = Arrow(v2, crossing.over.end, self.canvas, color = crossing.over.color)
+        crossing.over.set_end(v1)
+        v1.in_arrow = crossing.over
+        new_under_arrow = Arrow(v2, crossing.under.end, self.canvas, color = crossing.under.color)
+        crossing.under.set_end(v1)
+        v1.in_arrow = crossing.under
 
-    def r2_rev_1(self, start, end):
-        cur_color = start.color
+        self.Vertices.append(v1)
+        self.Vertices.append(v2)
+        v1.expose()
+        v2.expose()
+
+        self.Arrows.append(new_over_arrow)
+        self.update_crossings(new_over_arrow)
+        self.update_crosspoints()
+        new_over_arrow.expose()
+        self.Arrows.append(new_under_arrow)
+        self.update_crossings(new_under_arrow)
+        self.update_crosspoints()
+        new_under_arrow.expose()
+
+        new_over_arrow.end.in_arrow = new_over_arrow
+        new_over_arrow.start.out_arrow = new_over_arrow
+        new_under_arrow.end.in_arrow = new_under_arrow
+        new_under_arrow.start.out_arrow = new_under_arrow
+        self.update_info()
+        return
+
+    def reverse_strand(self, start, end):
         if start != end:
             start.out_arrow.reverse(self.Crossings)
-            start.out_arrow.set_color(cur_color)
-            start.out_arrow.end.set_color(cur_color)
             start = start.out_arrow.end
         else:
             start.reverse()
         while start != end:
             start.reverse()
             start.out_arrow.reverse(self.Crossings)
-            start.out_arrow.set_color(cur_color)
-            start.out_arrow.end.set_color(cur_color)
             start = start.out_arrow.end
-
-    def r2_rev_2(self, start, end):
-        cur_color = start.color
-        if start != end:
-            start.in_arrow.reverse(self.Crossings)
-            start.in_arrow.set_color(cur_color)
-            start.in_arrow.end.set_color(cur_color)
-            start = start.in_arrow.start
-        else:
-            start.reverse()
-        while start != end:
-            start.reverse()
-            start.in_arrow.reverse(self.Crossings)
-            start.in_arrow.set_color(cur_color)
-            start.in_arrow.end.set_color(cur_color)
-            start = start.in_arrow.start
 
     def single_click(self, event):
         """
@@ -1338,46 +1275,22 @@ class LinkEditor(PLinkBase):
                             'Sorry! R1 mode does not work in this setting.')
                     return
                 elif self.r2_mode == True:
-                    # start_vertex.expose()
                     self.r2_crossings.append(start_vertex)
-                    # self.r2_crossings.sort()
                     if len(self.r2_crossings) == 2:
                         cross1 = self.Crossings[self.CrossPoints.index(self.r2_crossings[0])]
                         cross2 = self.Crossings[self.CrossPoints.index(self.r2_crossings[1])]
-                        sorted_cross = self.r2_sort(cross1, cross2)
-                        cross1 = sorted_cross[0]
-                        cross2 = sorted_cross[1]
-                        over_arrow_path_2 = self.get_over_arrow_path_2(cross1, cross2)
-                        under_arrow_path_2 = self.get_under_arrow_path_2(cross1, cross2)
-                        can_reduce_over, can_reduce_under = self.over_under_has_crossings_2(over_arrow_path_2, 
-                                    under_arrow_path_2, cross1, cross2)
-                        under_start = cross1.under.start
-                        under_end = cross1.under.end
-                        over_start = cross2.over.start
-                        over_end = cross2.over.end
-                        case = 1
-                        # if can_reduce_under == True and can_reduce_over == False:
-                        #     cross1.reverse()
-                        #     cross2.reverse()
-                        if can_reduce_over == True or can_reduce_under == True or cross1 != cross2:
+                        can_move = self.check_obstructions_r2(cross1, cross2)
+                        case = self.possible_r2_move(can_move)
+                        chiralities = self.chirality(cross1)
+                        reverse_under_start = cross1.under.start
+                        reverse_under_end = cross1.under.end
+                        reverse_over_start = cross1.over.start
+                        reverse_over_end = cross1.over.end
+                        print(can_move)
+                        print(case)
+                        if case != 0 and (cross1.over.color == cross2.over.color and cross1.under.color == cross2.under.color):
                             segments1 = cross1.under.find_segments(self.Crossings)
-                            handedness1 = self.crossing_hand(cross1)
                             segments2 = cross2.under.find_segments(self.Crossings)
-                            handedness2 = self.crossing_hand(cross2)
-                            # clean code for handedness heuristic
-                            # start_v = cross1.under.start
-                            # end_v = cross2.under.end
-                            # start_inner = cross1.under.start
-                            # end_inner = cross1.under.start
-
-                            simple_case_over = False
-                            simple_case_under = False
-                            if cross1.over.end == cross2.over.start or cross2.over.end == cross1.over.start:
-                                simple_case_over = True
-                            if cross1.under.end == cross2.under.end:
-                                simple_case_under = True
-                            print(simple_case_over, simple_case_under)
-
                             for i in range(1, len(segments1)):
                                 if ((segments1[i-1][2] <= cross1.x <= segments1[i][0] or
                                     segments1[i-1][3] <= cross1.y <= segments1[i][1]) or
@@ -1385,26 +1298,12 @@ class LinkEditor(PLinkBase):
                                     segments1[i-1][3] >= cross1.y >= segments1[i][1])):
                                     v1 = Vertex(segments1[i-1][2], segments1[i-1][3], self.canvas, style='hidden')
                                     v2 = Vertex(segments1[i][0], segments1[i][1], self.canvas, style='hidden')
-                                    if handedness1 == 1:
-                                        print(1)
-                                        v1.set_color(cross1.over.color)
-                                        v2.set_color(cross1.under.color)
-                                        self.r2_helper_pos(cross1, v1, v2, 1, simple_case_over, simple_case_under)
-                                        under_start = v1
-                                        over_start = cross1.over.end
-                                        break
-                                        # start_inner = v1
+                                    if case == 1 or case == 3:
+                                        self.r2_1(cross1, v1, v2)
                                     else:
-                                        print(2)
-                                        v1.set_color(cross1.under.color)
-                                        v2.set_color(cross1.over.color)
-                                        self.r2_helper_neg(cross1, v1, v2, 2, simple_case_over, simple_case_under)
-                                        under_start = v2
-                                        over_start = cross1.over.start
-                                        case = 2
-                                        break
-                                        # start_inner = v1
-
+                                        self.r2_2(cross1, v1, v2)
+                                        reverse_over_start = v2
+                                        reverse_under_start = v1
                             for i in range(1, len(segments2)):
                                 if ((segments2[i-1][2] <= cross2.x <= segments2[i][0] or
                                     segments2[i-1][3] <= cross2.y <= segments2[i][1]) or
@@ -1412,59 +1311,15 @@ class LinkEditor(PLinkBase):
                                     segments2[i-1][3] >= cross2.y >= segments2[i][1])):
                                     v1 = Vertex(segments2[i-1][2], segments2[i-1][3], self.canvas, style='hidden')
                                     v2 = Vertex(segments2[i][0], segments2[i][1], self.canvas, style='hidden')
-
-                                    if handedness2 == 1:
-                                        print(3)
-                                        v1.set_color(cross2.over.color)
-                                        v2.set_color(cross2.under.color)
-                                        self.r2_helper_pos(cross2, v1, v2, 2, simple_case_over, simple_case_under)
-                                        under_end = v1
-                                        over_end = cross2.over.end
-                                        case = 2
-                                        break
-                                        # end_inner = v2
+                                    if case == 1 or case == 3:
+                                        self.r2_1(cross2, v1, v2)
                                     else:
-                                        print(4)
-                                        v1.set_color(cross2.under.color)
-                                        v2.set_color(cross2.over.color)
-                                        self.r2_helper_neg(cross2, v1, v2, 1, simple_case_over, simple_case_under)
-                                        under_end = v2
-                                        over_end = cross2.over.start
-                                        break
-                                        # end_inner = v2
-                            
-                            # arr = Arrow(start_inner, end_inner, self.canvas, color = cross1.over.color)
-                            # self.Arrows.append(arr)
-                            # self.update_crossings(arr)
-                            # self.update_crosspoints()
-                            # arr.expose() 
-
-                            if case == 1:
-                                self.r2_rev_1(under_start, under_end)
-                                if simple_case_over == False:
-                                    self.r2_rev_2(over_start, over_end)
-                            else:
-                                self.r2_rev_2(under_start, under_end)
-                                if simple_case_over == False:
-                                    self.r2_rev_1(over_start, over_end)
-                            self.Arrows.remove(cross1.over)
-                            cross1.over.erase()
-                            self.Crossings = [c for c in self.Crossings if cross1.over not in c]
-                            # self.Arrows.remove(cross1.under)
-                            # cross1.under.erase()
-                            # self.Crossings = [c for c in self.Crossings if cross1.under not in c]
-                            if cross2.over in self.Arrows:
-                                self.Arrows.remove(cross2.over)
-                                cross2.over.erase()
-                                self.Crossings = [c for c in self.Crossings if cross2.over not in c]
-                            # delete arrows
-                            # if cross2.under in self.Arrows:
-                            #     self.Arrows.remove(cross2.under)
-                            #     cross2.under.erase()
-                            #     self.Crossings = [c for c in self.Crossings if cross2.under not in c]
-                            self.update_info()
-                            # start_v.out_arrow.expose()
-                            # end_v.in_arrow.expose()
+                                        self.r2_2(cross2, v1, v2)
+                                        reverse_over_end = v1
+                                        reverse_under_end = v2
+                            # if chiralities[0] != chiralities[1]:
+                            #     self.reverse_strand(reverse_under_start, reverse_under_end)
+                            #     self.reverse_Strand(reverse_over_start, reverse_over_end)
                         else:
                             tkMessageBox.showwarning(
                                 'Not implemented',
