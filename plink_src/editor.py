@@ -1000,16 +1000,33 @@ class LinkEditor(PLinkBase):
 
     def get_over_arrow_path_2(self, crossing_begin, crossing_end):
         arrow_path = [crossing_begin.over]
-        while crossing_end.over not in arrow_path:
-            most_recent = arrow_path[-1]
-            arrow_path.append(most_recent.end.out_arrow)
+        if crossing_end.over in arrow_path:
+            first_crossings = crossing_begin.over.crossings_list(self.Crossings)
+            if first_crossings.index(crossing_begin) > first_crossings.index(crossing_end):
+                arrow_path.append(arrow_path[-1].end.out_arrow)
+                while arrow_path[-1] != crossing_end.over:
+                    most_recent = arrow_path[-1]
+                    arrow_path.append(most_recent.end.out_arrow)
+        else:
+            while crossing_end.over not in arrow_path:
+                most_recent = arrow_path[-1]
+                arrow_path.append(most_recent.end.out_arrow)
         return arrow_path
 
     def get_under_arrow_path_2(self, crossing_begin, crossing_end):
         arrow_path = [crossing_begin.under]
-        while crossing_end.under not in arrow_path:
-            most_recent = arrow_path[-1]
-            arrow_path.append(most_recent.end.out_arrow)
+        if crossing_end.under in arrow_path:
+            first_crossings = crossing_begin.under.crossings_list(self.Crossings)
+            if first_crossings.index(crossing_begin) > first_crossings.index(crossing_end):
+                most_recent = arrow_path[-1]
+                arrow_path.append(most_recent.end.out_arrow)
+                while arrow_path[-1] != crossing_end.under:
+                    most_recent = arrow_path[-1]
+                    arrow_path.append(most_recent.end.out_arrow)
+        else:
+            while crossing_end.under not in arrow_path:
+                most_recent = arrow_path[-1]
+                arrow_path.append(most_recent.end.out_arrow)
         return arrow_path
 
 
@@ -1055,14 +1072,19 @@ class LinkEditor(PLinkBase):
         over2 = self.get_over_arrow_path_2(cross2, cross1)
         under2 = self.get_under_arrow_path_2(cross2, cross1)
         strands = [over1, under1, over2, under2]
+        print(strands)
         for i in range(2):
             start = strands[i].pop(0)
-            end = strands[i].pop(len(strands[i]) - 1)
+            if len(strands[i]) != 0:
+                end = strands[i].pop(len(strands[i]) - 1)
+            else:
+                end = start
             start_crossings = start.crossings_list(self.Crossings)
             end_crossings = end.crossings_list(self.Crossings)
             start_index = start_crossings.index(cross1)
             end_index = end_crossings.index(cross2)
-            if start_crossings[start_index:] != [cross1] or end_crossings[:end_index] != []:
+            if ((start_crossings[start_index:] != [cross1] and start_crossings[start_index:] != [cross1, cross2])
+                or (end_crossings[:end_index] != [] and end_crossings[:end_index] != [cross1])):
                 output[i] = False
             for edge in strands[i]:
                 obstructions = edge.crossings_list(self.Crossings)
@@ -1070,12 +1092,16 @@ class LinkEditor(PLinkBase):
                     output[i] = False
         for i in range(2, 4):
             start = strands[i].pop(0)
-            end = strands[i].pop(len(strands[i]) - 1)
+            if len(strands[i]) != 0:
+                end = strands[i].pop(len(strands[i]) - 1)
+            else:
+                end = start
             start_crossings = start.crossings_list(self.Crossings)
             end_crossings = end.crossings_list(self.Crossings)
             start_index = start_crossings.index(cross2)
             end_index = end_crossings.index(cross1)
-            if start_crossings[start_index:] != [cross2] or end_crossings[:end_index] != []:
+            if ((start_crossings[start_index:] != [cross2] and start_crossings[start_index:] != [cross2, cross1])
+                or (end_crossings[:end_index] != [] and end_crossings[:end_index] != [cross2])):
                 output[i] = False
             for edge in strands[i]:
                 obstructions = edge.crossings_list(self.Crossings)
@@ -1096,14 +1122,17 @@ class LinkEditor(PLinkBase):
             return 0
 
     # perform r2 here
-    # need a helper funciton for reversing
-    def r2_1(self, crossing, v1, v2):
+    # test:
+    def r2_1(self, crossing, v1, v2, simple_case_over, simple_case_under, reverse_case):
         new_over_arrow = Arrow(v1, crossing.over.end, self.canvas, color = crossing.over.color)
         crossing.over.set_end(v2)
         v2.in_arrow = crossing.over
         new_under_arrow = Arrow(v2, crossing.under.end, self.canvas, color = crossing.under.color)
         crossing.under.set_end(v1)
-        v1.in_arrow = crossing.under
+        if reverse_case != True:
+            v1.in_arrow = crossing.under
+        else:
+            v1.out_arrow = crossing.under
 
         self.Vertices.append(v1)
         self.Vertices.append(v2)
@@ -1120,19 +1149,25 @@ class LinkEditor(PLinkBase):
         new_under_arrow.expose()
 
         new_over_arrow.end.in_arrow = new_over_arrow
-        new_over_arrow.start.out_arrow = new_over_arrow
+        if reverse_case != True:
+            new_over_arrow.start.out_arrow = new_over_arrow
+        else:
+            new_over_arrow.start.in_arrow = new_over_arrow
         new_under_arrow.end.in_arrow = new_under_arrow
         new_under_arrow.start.out_arrow = new_under_arrow
         self.update_info()
         return
 
-    def r2_2(self, crossing, v1, v2):
+    def r2_2(self, crossing, v1, v2, simple_case_over, simple_case_under, reverse_case):
         new_over_arrow = Arrow(v2, crossing.over.end, self.canvas, color = crossing.over.color)
         crossing.over.set_end(v1)
         v1.in_arrow = crossing.over
         new_under_arrow = Arrow(v2, crossing.under.end, self.canvas, color = crossing.under.color)
         crossing.under.set_end(v1)
-        v1.in_arrow = crossing.under
+        if reverse_case != True:
+            v1.in_arrow = crossing.under
+        else:
+            v1.out_arrow = crossing.under
 
         self.Vertices.append(v1)
         self.Vertices.append(v2)
@@ -1149,22 +1184,30 @@ class LinkEditor(PLinkBase):
         new_under_arrow.expose()
 
         new_over_arrow.end.in_arrow = new_over_arrow
-        new_over_arrow.start.out_arrow = new_over_arrow
+        if reverse_case != True:
+            new_over_arrow.start.out_arrow = new_over_arrow
+        else:
+            new_over_arrow.start.in_arrow = new_over_arrow
         new_under_arrow.end.in_arrow = new_under_arrow
         new_under_arrow.start.out_arrow = new_under_arrow
         self.update_info()
         return
 
-    def reverse_strand(self, start, end):
-        if start != end:
-            start.out_arrow.reverse(self.Crossings)
-            start = start.out_arrow.end
-        else:
+    def reverse_over(self, start, end):
+        if start == end:
             start.reverse()
         while start != end:
             start.reverse()
             start.out_arrow.reverse(self.Crossings)
             start = start.out_arrow.end
+
+    def reverse_under(self, start, end):
+        if start == end:
+            start.reverse()
+        while start != end:
+            start.reverse()
+            start.in_arrow.reverse(self.Crossings)
+            start = start.in_arrow.start
 
     def single_click(self, event):
         """
@@ -1292,16 +1335,32 @@ class LinkEditor(PLinkBase):
                         cross2 = self.Crossings[self.CrossPoints.index(self.r2_crossings[1])]
                         can_move = self.check_obstructions_r2(cross1, cross2)
                         case = self.possible_r2_move(can_move)
-                        chiralities = self.chirality(cross1)
+                        # chiralities = self.chirality(cross1)
                         reverse_under_start = cross1.under.start
-                        reverse_under_end = cross1.under.end
+                        reverse_under_end = cross2.under.end
                         reverse_over_start = cross1.over.start
-                        reverse_over_end = cross1.over.end
+                        reverse_over_end = cross2.over.end
                         print(can_move)
                         print(case)
+
+                        # make sure to implement a reverse function for the two cases
                         if case != 0 and (cross1.over.color == cross2.over.color and cross1.under.color == cross2.under.color):
                             segments1 = cross1.under.find_segments(self.Crossings)
                             segments2 = cross2.under.find_segments(self.Crossings)
+
+                            simple_case_over = False
+                            simple_case_under = False
+                            if cross1.over.end == cross2.over.end:
+                                simple_case_over = True
+                            if cross1.under.end == cross2.under.end:
+                                simple_case_under = True
+                            print(simple_case_over, simple_case_under)
+
+                            reverse_case = False
+                            if case == 2 or case == 4:
+                                reverse_case = True
+                            print(reverse_case)
+
                             for i in range(1, len(segments1)):
                                 if ((segments1[i-1][2] <= cross1.x <= segments1[i][0] or
                                     segments1[i-1][3] <= cross1.y <= segments1[i][1]) or
@@ -1310,11 +1369,13 @@ class LinkEditor(PLinkBase):
                                     v1 = Vertex(segments1[i-1][2], segments1[i-1][3], self.canvas, style='hidden')
                                     v2 = Vertex(segments1[i][0], segments1[i][1], self.canvas, style='hidden')
                                     if case == 1 or case == 3:
-                                        self.r2_1(cross1, v1, v2)
+                                        self.r2_1(cross1, v1, v2, simple_case_over, simple_case_under, reverse_case)
+                                        break
                                     else:
-                                        self.r2_2(cross1, v1, v2)
-                                        reverse_over_start = v2
-                                        reverse_under_start = v1
+                                        self.r2_2(cross1, v1, v2, simple_case_over, simple_case_under, reverse_case)
+                                        reverse_over_end = v2
+                                        reverse_under_end = v1
+                                        break
                             for i in range(1, len(segments2)):
                                 if ((segments2[i-1][2] <= cross2.x <= segments2[i][0] or
                                     segments2[i-1][3] <= cross2.y <= segments2[i][1]) or
@@ -1323,14 +1384,17 @@ class LinkEditor(PLinkBase):
                                     v1 = Vertex(segments2[i-1][2], segments2[i-1][3], self.canvas, style='hidden')
                                     v2 = Vertex(segments2[i][0], segments2[i][1], self.canvas, style='hidden')
                                     if case == 1 or case == 3:
-                                        self.r2_1(cross2, v1, v2)
+                                        self.r2_1(cross2, v1, v2, simple_case_over, simple_case_under, reverse_case)
+                                        break
                                     else:
-                                        self.r2_2(cross2, v1, v2)
-                                        reverse_over_end = v1
-                                        reverse_under_end = v2
-                            # if chiralities[0] != chiralities[1]:
-                            #     self.reverse_strand(reverse_under_start, reverse_under_end)
-                            #     self.reverse_Strand(reverse_over_start, reverse_over_end)
+                                        self.r2_2(cross2, v1, v2, simple_case_over, simple_case_under, reverse_case)
+                                        reverse_over_start = v1
+                                        reverse_under_start = v2
+                                        break
+                            if reverse_case:
+                                print('reversing')
+                                self.reverse_over(reverse_over_start, reverse_over_end)
+                                self.reverse_under(reverse_under_start, reverse_under_end)
                         else:
                             tkMessageBox.showwarning(
                                 'Not implemented',
