@@ -1263,61 +1263,53 @@ class LinkEditor(PLinkBase):
                     can_reduce_over, can_reduce_under = self.check_obstructions_r1(crossing)
 
                     if can_reduce_under:
-                        original_under_start = crossing.under.start
-                        original_over_end = crossing.over.end
-                        color = crossing.over.color
 
-                        for ind in range(len(under_arrow_path)):
+                        for ind in range(1, len(under_arrow_path) - 1):
                             arrow = under_arrow_path[ind]
-                            if ind != (len(under_arrow_path) - 1):
-                                self.Vertices.remove(arrow.end)
-                                arrow.end.erase()
+                            self.Vertices.remove(arrow.end)
+                            self.Vertices.remove(arrow.start)
                             self.destroy_arrow(arrow)
 
-                        new_vert = start_vertex
-                        new_vert.set_color(color)
-                        self.Vertices.append(new_vert)
+                        start_vertex.set_color(crossing.over.color)
+                        self.Vertices.append(start_vertex)
 
-                        arrow1 = Arrow(original_under_start, new_vert, self.canvas,
-                                                style='hidden', color = color)
-                        arrow2 = Arrow(new_vert, original_over_end, self.canvas,
-                                                style='hidden', color = color)
-                        self.Arrows.append(arrow1)
-                        self.Arrows.append(arrow2)
+                        crossing.under.end.erase()
+                        crossing.over.start.erase()
 
-                        new_vert.expose()
-                        arrow1.expose()
-                        arrow2.expose()
+                        crossing.under.set_end(start_vertex)
+                        crossing.over.set_start(start_vertex)
+                        start_vertex.in_arrow = crossing.under
+                        start_vertex.out_arrow = crossing.over
 
+                        start_vertex.expose()
+            
+                        self.update_crosspoints()
+                        self.set_style()
                         self.update_info()
 
                     elif can_reduce_over:
-                        original_under_start = crossing.over.start
-                        original_over_end = crossing.under.end
-                        color = crossing.over.color
 
-                        for ind in range(len(over_arrow_path)):
+                        for ind in range(1, len(under_arrow_path) - 1):
                             arrow = over_arrow_path[ind]
-                            if ind != (len(over_arrow_path) - 1):
-                                self.Vertices.remove(arrow.end)
-                                arrow.end.erase()
+                            self.Vertices.remove(arrow.end)
+                            self.Vertices.remove(arrow.start)
                             self.destroy_arrow(arrow)
 
-                        new_vert = start_vertex
-                        new_vert.set_color(color)
-                        self.Vertices.append(new_vert)
+                        start_vertex.set_color(crossing.over.color)
+                        self.Vertices.append(start_vertex)
 
-                        arrow1 = Arrow(original_under_start, new_vert, self.canvas,
-                                                style='hidden', color = color)
-                        arrow2 = Arrow(new_vert, original_over_end, self.canvas,
-                                                style='hidden', color = color)
-                        self.Arrows.append(arrow1)
-                        self.Arrows.append(arrow2)
+                        crossing.under.start.erase()
+                        crossing.over.end.erase()
 
-                        new_vert.expose()
-                        arrow1.expose()
-                        arrow2.expose()
+                        crossing.under.set_start(start_vertex)
+                        crossing.over.set_end(start_vertex)
+                        start_vertex.in_arrow = crossing.over
+                        start_vertex.out_arrow = crossing.under
 
+                        start_vertex.expose()
+                        
+                        self.update_crosspoints()
+                        self.set_style()
                         self.update_info()
 
                     else:
