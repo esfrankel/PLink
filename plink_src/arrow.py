@@ -161,6 +161,7 @@ class Arrow:
             segments.append( (a + gap_a, b - gap_b) )
         return [r(a) + r(b) for a, b in segments]
     
+    # added function to list of crossings on the arrow sorted from start to end
     def crossings_list(self, crossings):
         c_list = []
         self.vectorize()

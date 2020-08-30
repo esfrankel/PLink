@@ -1030,7 +1030,6 @@ class LinkEditor(PLinkBase):
         over2 = self.get_over_arrow_path_2(cross2, cross1)
         under2 = self.get_under_arrow_path_2(cross2, cross1)
         strands = [over1, under1, over2, under2]
-        print(strands)
         for i in range(2):
             start = strands[i].pop(0)
             if len(strands[i]) != 0:
@@ -1118,6 +1117,9 @@ class LinkEditor(PLinkBase):
     
     # Performs r2 for one of two cases
     def r2_1(self, crossing, v1, v2, simple_case_over, simple_case_under, reverse_case):
+        over_data = self.original_crossing_data(crossing.over)
+        under_data = self.original_crossing_data(crossing.under)
+
         new_over_arrow = Arrow(v1, crossing.over.end, self.canvas, color = crossing.over.color)
         crossing.over.set_end(v2)
         v2.in_arrow = crossing.over
@@ -1149,11 +1151,18 @@ class LinkEditor(PLinkBase):
             new_over_arrow.start.in_arrow = new_over_arrow
         new_under_arrow.end.in_arrow = new_under_arrow
         new_under_arrow.start.out_arrow = new_under_arrow
+
+        self.retain_crossing_data(crossing.over, new_over_arrow, over_data)
+        self.retain_crossing_data(crossing.under, new_under_arrow, under_data)
+
         self.update_info()
         return
 
     # Performs r2 for one of two cases
     def r2_2(self, crossing, v1, v2, simple_case_over, simple_case_under, reverse_case):
+        over_data = self.original_crossing_data(crossing.over)
+        under_data = self.original_crossing_data(crossing.under)
+
         new_over_arrow = Arrow(v2, crossing.over.end, self.canvas, color = crossing.over.color)
         crossing.over.set_end(v1)
         v1.in_arrow = crossing.over
@@ -1185,6 +1194,10 @@ class LinkEditor(PLinkBase):
             new_over_arrow.start.in_arrow = new_over_arrow
         new_under_arrow.end.in_arrow = new_under_arrow
         new_under_arrow.start.out_arrow = new_under_arrow
+
+        self.retain_crossing_data(crossing.over, new_over_arrow, over_data)
+        self.retain_crossing_data(crossing.under, new_under_arrow, under_data)
+
         self.update_info()
         return
 
@@ -1205,6 +1218,27 @@ class LinkEditor(PLinkBase):
             start.reverse()
             start.in_arrow.reverse(self.Crossings)
             start = start.in_arrow.start
+
+    # Retains under crossing data when an arrow is broken
+    def original_crossing_data(self, arrow): 
+        under_crossings = []
+        crossings = arrow.crossings_list(self.Crossings)
+        for crossing in crossings:
+            if arrow == crossing.over:
+                under_crossings.append('over')
+            else:
+                under_crossings.append('under')
+        return under_crossings
+    
+    # need a function to perform reimplement function on new arrow
+    def retain_crossing_data(self, original_arrow, new_arrow, original_data):
+        old_crossings = original_arrow.crossings_list(self.Crossings)
+        n = len(old_crossings)
+        original_data = original_data[n:]
+        new_crossings = new_arrow.crossings_list(self.Crossings)
+        for i in range(len(new_crossings)):
+            if original_data[i] == 'under':
+                new_crossings[i].reverse()
 
     def single_click(self, event):
         """
@@ -1385,6 +1419,8 @@ class LinkEditor(PLinkBase):
                                 'Not implemented',
                                 'Sorry! R2 mode does not work in this setting.')
                         self.r2_crossings.clear()
+                        self.update_crosspoints()
+                        self.set_style()
                         self.update_info()
                     return
                 else:
@@ -1401,7 +1437,6 @@ class LinkEditor(PLinkBase):
             elif self.clicked_on_arrow(start_vertex):
                 print("clicked on an arrow")
                 if self.vertex_mode:
-                    new_vert = start_vertex
                     selected_arrow = None
                     for arrow in self.Arrows:
                         if arrow.too_close(start_vertex):
@@ -1409,19 +1444,25 @@ class LinkEditor(PLinkBase):
                             this_color = arrow.color
                             start = arrow.start
                             end = arrow.end
-                    self.destroy_arrow(selected_arrow)
-                    new_vert.set_color(this_color)
-                    arrow1 = Arrow(start, new_vert, self.canvas,
-                                            style='hidden', color = this_color)
-                    arrow2 = Arrow(new_vert, end, self.canvas,
-                                            style='hidden', color = this_color)
-                    new_vert.set_color(arrow2.color)
-                    self.Vertices.append(new_vert)
-                    self.Arrows.append(arrow1)
-                    self.Arrows.append(arrow2)
+                    
+                    original_data = self.original_crossing_data(selected_arrow)
+                    new_arrow = Arrow(start_vertex, end, self.canvas, style='hidden', color = this_color)
+                    selected_arrow.set_end(start_vertex)
+                    start_vertex.set_color(this_color)
+                    self.Vertices.append(start_vertex)
+                    self.Arrows.append(new_arrow)
+                    self.update_crossings(new_arrow)
+                    self.update_crosspoints()
+                    new_arrow.expose()
                     start_vertex.expose()
-                    arrow1.expose()
-                    arrow2.expose()
+
+                    start_vertex.in_arrow = selected_arrow
+                    start_vertex.out_arrow = new_arrow
+
+                    self.retain_crossing_data(selected_arrow, new_arrow, original_data)
+
+                    self.update_crosspoints()
+                    self.set_style()
                     self.update_info()
                 else:
                     for arrow in self.Arrows:
