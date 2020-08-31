@@ -1192,7 +1192,10 @@ class LinkEditor(PLinkBase):
             new_over_arrow.start.out_arrow = new_over_arrow
         else:
             new_over_arrow.start.in_arrow = new_over_arrow
-        new_under_arrow.end.in_arrow = new_under_arrow
+        if simple_case_under == True and reverse_case == True:
+            new_under_arrow.end.out_arrow = new_under_arrow
+        else:
+            new_under_arrow.end.in_arrow = new_under_arrow
         new_under_arrow.start.out_arrow = new_under_arrow
 
         self.retain_crossing_data(crossing.over, new_over_arrow, over_data)
@@ -1370,10 +1373,6 @@ class LinkEditor(PLinkBase):
 
                             simple_case_over = False
                             simple_case_under = False
-                            if cross1.over.end == cross2.over.end:
-                                simple_case_over = True
-                            if cross1.under.end == cross2.under.end:
-                                simple_case_under = True
 
                             reverse_case = False
                             if case == 2 or case == 4:
@@ -1394,6 +1393,11 @@ class LinkEditor(PLinkBase):
                                         reverse_over_end = v2
                                         reverse_under_end = v1
                                         break
+                            
+                            if cross1.over.end == cross2.over.end:
+                                simple_case_over = True
+                            if cross1.under.end == cross2.under.end:
+                                simple_case_under = True
 
                             for i in range(1, len(segments2)):
                                 if ((segments2[i-1][2] <= cross2.x <= segments2[i][0] or
