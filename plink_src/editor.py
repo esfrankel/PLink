@@ -1805,8 +1805,16 @@ class LinkEditor(PLinkBase):
             c_list = []
             c_list.extend(self.crossed_arrows(self.ActiveVertex.in_arrow, [self.ActiveVertex.in_arrow]))
             c_list.extend(self.crossed_arrows(self.ActiveVertex.out_arrow, [self.ActiveVertex.out_arrow]))
-            if len(c_list) != len(self.active_crossing_data()):
-                raise ValueError
+            # active_crossing_data is a tuple, containing all the in arrow data in first slot and all out arrow data in the other
+            # fix bug
+            cur_list = []
+            cur_list.extend(self.active_crossing_data()[0])
+            cur_list.extend(self.active_crossing_data()[1])
+            print(c_list)
+            print(cur_list)
+            print(self.active_crossing_data())
+            # if len(c_list) != len(cur_list):
+            #     raise ValueError
         endpoint = None
         if self.ActiveVertex.is_endpoint():
             other_ends = [v for v in self.Vertices if

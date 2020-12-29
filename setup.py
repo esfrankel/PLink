@@ -113,7 +113,7 @@ exec(open('plink_src/version.py').read())
 # Get long description from README
 long_description = open('README.rst').read().split('License')[0]
 
-setup(name='plink',
+setup(name='plink_knot_reu',
       version=version,
       packages=['plink'],
       package_dir = {'plink': src}, 
